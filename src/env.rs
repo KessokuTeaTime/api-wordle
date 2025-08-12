@@ -28,8 +28,8 @@ static_lazy_lock! {
 }
 
 static_lazy_lock! {
-    pub DATABASE_DIR: PathBuf = parse_env!("DATABASE_DIR" => |s| Ok(PathBuf::from(s))).expect("DATABASE_DIR not set in environment");
-    "The directory for database."
+    pub DATABASE_URL: String = env::var("DATABASE_URL").expect("DATABASE_URL not set in environment");
+    "The url to connect the database."
 }
 
 static_lazy_lock! {

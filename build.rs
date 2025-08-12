@@ -29,5 +29,7 @@ fn main() -> Result<(), Error> {
             .emit()?;
     }
 
+    println!("cargo:rerun-if-changed=./migrations");
+
     Ok(())
 }

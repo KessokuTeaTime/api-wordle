@@ -1,22 +1,29 @@
 //! KessokuTeaTime API backend for the wordle game.
 
-use crate::env::{
-    PORT,
-    info::{BUILD_TIMESTAMP, GIT_HASH},
+use crate::{
+    database::run_migrations,
+    env::{
+        DATABASE_URL, PORT,
+        info::{BUILD_TIMESTAMP, GIT_HASH},
+    },
 };
 
 use std::net::SocketAddr;
 
 use api_framework::shutdown;
 use axum::Router;
+use diesel::{Connection, PgConnection};
 use tokio::net::TcpListener;
 use tracing::{info, trace};
 
 pub mod env;
 pub mod logging;
 
+pub mod database;
 pub mod endpoint;
 pub mod middleware;
+
+mod schema;
 
 #[tokio::main]
 async fn main() {
@@ -31,7 +38,7 @@ async fn main() {
         clap::crate_version!()
     );
     info!("compiled from commit {GIT_HASH} at {BUILD_TIMESTAMP}");
-    info!("starting server on port {}", *PORT);
+    info!("starting server on port {}…", *PORT);
 
     let mut app = Router::new();
     app = endpoint::route_from(app);

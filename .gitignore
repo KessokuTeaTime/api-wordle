@@ -3,14 +3,8 @@
 /.vscode
 /.idea
 /.VSCodeCounter
-/Cargo.lock
 */Cargo.lock
+/Cargo.lock
+.env
 
-*.DS_STORE
-
-
-# Added by cargo
-#
-# already existing elements were commented out
-
-#/target
+*.DS_Store
