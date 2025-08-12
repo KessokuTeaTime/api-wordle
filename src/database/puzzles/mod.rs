@@ -1,27 +1,9 @@
-use crate::{
-    database::types::{NewPuzzle, Puzzle},
-    schema,
-};
+use crate::{database::types::Puzzle, schema};
 
 use super::types::{PuzzleDate, PuzzleSolution};
 
 use diesel::{PgConnection, QueryDsl, RunQueryDsl, prelude::*};
 use tracing::{error, info, trace, warn};
-
-pub fn get_puzzles(conn: &mut PgConnection, includes_deleted: bool) -> Vec<Puzzle> {
-    use schema::puzzles::dsl::{is_deleted as d_is_deleted, puzzles};
-
-    info!("getting puzzles");
-    let query = if includes_deleted {
-        puzzles.into_boxed()
-    } else {
-        puzzles.filter(d_is_deleted.eq(false)).into_boxed()
-    };
-    let p = query.load::<Puzzle>(conn).unwrap_or(Vec::new());
-
-    trace!("got puzzles: {p:?}");
-    p
-}
 
 pub fn get_dates(conn: &mut PgConnection, includes_deleted: bool) -> Vec<PuzzleDate> {
     use schema::puzzles::dsl::{date as d_date, is_deleted as d_is_deleted, puzzles};
@@ -39,6 +21,21 @@ pub fn get_dates(conn: &mut PgConnection, includes_deleted: bool) -> Vec<PuzzleD
 
     trace!("got dates: {dates:?}");
     dates
+}
+
+pub fn get_puzzles(conn: &mut PgConnection, includes_deleted: bool) -> Vec<Puzzle> {
+    use schema::puzzles::dsl::{is_deleted as d_is_deleted, puzzles};
+
+    info!("getting puzzles");
+    let query = if includes_deleted {
+        puzzles.into_boxed()
+    } else {
+        puzzles.filter(d_is_deleted.eq(false)).into_boxed()
+    };
+    let p = query.load::<Puzzle>(conn).unwrap_or(Vec::new());
+
+    trace!("got puzzles: {p:?}");
+    p
 }
 
 pub fn get_puzzle(conn: &mut PgConnection, date: &PuzzleDate) -> Option<Puzzle> {
@@ -67,10 +64,7 @@ pub fn insert_solution(
 
     info!("putting puzzle for {date}…");
     match diesel::insert_into(puzzles)
-        .values(NewPuzzle {
-            date: date.to_owned(),
-            solution: solution.to_owned(),
-        })
+        .values(Puzzle::new(date.to_owned(), solution.to_owned()).to_new_puzzle())
         .execute(conn)
     {
         Ok(_) => {

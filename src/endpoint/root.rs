@@ -13,7 +13,7 @@ use crate::database::{
         delete_solution, get_puzzle, get_puzzles, insert_or_update_solution, insert_solution,
         update_solution,
     },
-    types::{NewPuzzle, Puzzle, PuzzleDate, PuzzleSolution},
+    types::{NewPuzzle, Puzzle, PuzzleDate, PuzzleSolution, ResultPuzzle},
 };
 
 #[derive(Debug, Deserialize)]
@@ -102,16 +102,20 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
             };
 
             match insert_or_update_solution(&mut conn, &date, &solution) {
-                Ok(_) => (StatusCode::CREATED, Json(Puzzle::new(date, solution))).into_response(),
+                Ok(_) => (
+                    StatusCode::CREATED,
+                    Json(Puzzle::new(date, solution).to_result_puzzle()),
+                )
+                    .into_response(),
                 Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
             }
         } else {
             (StatusCode::NOT_FOUND).into_response()
         }
     } else {
-        let puzzles: Vec<NewPuzzle> = get_puzzles(&mut conn, false)
+        let puzzles: Vec<ResultPuzzle> = get_puzzles(&mut conn, false)
             .into_iter()
-            .map(Puzzle::to_new_puzzle)
+            .map(Puzzle::to_result_puzzle)
             .collect();
         (StatusCode::OK, Json(puzzles)).into_response()
     }

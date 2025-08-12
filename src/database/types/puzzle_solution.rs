@@ -32,9 +32,15 @@ pub struct PuzzleSolution([char; 5]);
 impl PuzzleSolution {
     pub fn new(str: &str) -> Result<Self, PuzzleWordError> {
         let vec: Vec<char> = str.chars().map(|c| c.to_ascii_lowercase()).collect();
-        match vec.try_into() {
-            Ok(arr) => Ok(Self(arr)),
-            Err(_) => Err(PuzzleWordError::TooFewOrTooManyLetters(str.chars().count())),
+        let arr: [char; 5] = match vec.try_into() {
+            Ok(arr) => arr,
+            Err(_) => return Err(PuzzleWordError::TooFewOrTooManyLetters(str.chars().count())),
+        };
+
+        if arr.iter().all(|c| c.is_ascii_alphabetic()) {
+            Ok(Self(arr))
+        } else {
+            Err(PuzzleWordError::ContainsNonAsciiAlphabeticLetters)
         }
     }
 
@@ -52,17 +58,21 @@ impl Display for PuzzleSolution {
 #[derive(Debug)]
 pub enum PuzzleWordError {
     TooFewOrTooManyLetters(usize),
+    ContainsNonAsciiAlphabeticLetters,
 }
 
 impl Display for PuzzleWordError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PuzzleWordError::TooFewOrTooManyLetters(count) => {
+            Self::TooFewOrTooManyLetters(count) => {
                 if *count > 5 {
                     write!(f, "too many letters: {count}! must be 5")
                 } else {
                     write!(f, "too few letters: {count}! must be 5")
                 }
+            }
+            Self::ContainsNonAsciiAlphabeticLetters => {
+                write!(f, "cannot contain non ascii alphabetic letters!!")
             }
         }
     }

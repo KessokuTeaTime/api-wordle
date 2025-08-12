@@ -6,21 +6,42 @@ use serde::{Deserialize, Serialize};
 use super::{PuzzleDate, PuzzleSolution};
 use crate::schema;
 
-#[derive(Debug, Insertable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = schema::puzzles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NewPuzzle {
-    pub date: PuzzleDate,
-    pub solution: PuzzleSolution,
+    date: PuzzleDate,
+    solution: PuzzleSolution,
 }
 
 impl Display for NewPuzzle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.solution)
+        write!(f, "{} ({})", self.solution, self.date)
     }
 }
 
-#[derive(Debug, Queryable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResultPuzzle {
+    date: PuzzleDate,
+    solution: String,
+}
+
+impl Display for ResultPuzzle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.solution, self.date)
+    }
+}
+
+impl From<NewPuzzle> for ResultPuzzle {
+    fn from(value: NewPuzzle) -> Self {
+        Self {
+            date: value.date,
+            solution: value.solution.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Queryable, Serialize, Deserialize)]
 #[diesel(table_name = schema::puzzles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Puzzle {
@@ -31,7 +52,13 @@ pub struct Puzzle {
 
 impl Display for Puzzle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.solution)
+        write!(
+            f,
+            "{} {} ({})",
+            if self.is_deleted { '-' } else { '+' },
+            self.solution,
+            self.date
+        )
     }
 }
 
@@ -48,6 +75,13 @@ impl Puzzle {
         NewPuzzle {
             date: self.date,
             solution: self.solution,
+        }
+    }
+
+    pub fn to_result_puzzle(self) -> ResultPuzzle {
+        ResultPuzzle {
+            date: self.date,
+            solution: self.solution.to_string(),
         }
     }
 }

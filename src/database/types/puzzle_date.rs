@@ -64,8 +64,8 @@ pub enum PuzzleDateError {
 impl Display for PuzzleDateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PuzzleDateError::InvalidFormat => write!(f, "the date must be formatted as YYYY-MM-DD"),
-            PuzzleDateError::TooEarly => write!(f, "the date cannot be earlier than 1970-01-01"),
+            Self::InvalidFormat => write!(f, "the date must be formatted as YYYY-MM-DD"),
+            Self::TooEarly => write!(f, "the date cannot be earlier than 1970-01-01"),
         }
     }
 }
