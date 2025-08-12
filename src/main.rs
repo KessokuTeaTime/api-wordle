@@ -34,6 +34,8 @@ async fn main() {
         clap::crate_version!()
     );
     info!("compiled from commit {GIT_HASH} at {BUILD_TIMESTAMP}");
+
+    database::run_migrations();
     info!("starting server on port {}…", *PORT);
 
     let mut app = Router::new();

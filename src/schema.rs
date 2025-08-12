@@ -3,7 +3,7 @@
 diesel::table! {
     puzzles (date) {
         date -> Text,
-        puzzle -> Text,
+        solution -> Text,
         is_deleted -> Bool,
     }
 }

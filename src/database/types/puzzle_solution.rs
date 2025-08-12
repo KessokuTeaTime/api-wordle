@@ -27,9 +27,9 @@ use serde::{Deserialize, Serialize};
     FromSqlRow,
 )]
 #[diesel(sql_type = Text)]
-pub struct PuzzleWord([char; 5]);
+pub struct PuzzleSolution([char; 5]);
 
-impl PuzzleWord {
+impl PuzzleSolution {
     pub fn new(str: &str) -> Result<Self, PuzzleWordError> {
         let vec: Vec<char> = str.chars().map(|c| c.to_ascii_lowercase()).collect();
         match vec.try_into() {
@@ -43,7 +43,7 @@ impl PuzzleWord {
     }
 }
 
-impl Display for PuzzleWord {
+impl Display for PuzzleSolution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.map(|c| c.to_string()).join(""))
     }
@@ -70,7 +70,7 @@ impl Display for PuzzleWordError {
 
 impl std::error::Error for PuzzleWordError {}
 
-impl ToSql<Text, Pg> for PuzzleWord
+impl ToSql<Text, Pg> for PuzzleSolution
 where
     String: ToSql<Text, Pg>,
 {
@@ -80,13 +80,13 @@ where
     }
 }
 
-impl<DB> FromSql<Text, DB> for PuzzleWord
+impl<DB> FromSql<Text, DB> for PuzzleSolution
 where
     DB: Backend,
     String: FromSql<Text, DB>,
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
         let s = String::from_sql(bytes)?;
-        PuzzleWord::new(&s).map_err(|e| Box::from(format!("invalid date {s}: {e}")))
+        PuzzleSolution::new(&s).map_err(|e| Box::from(format!("invalid date {s}: {e}")))
     }
 }

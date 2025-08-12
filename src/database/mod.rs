@@ -31,16 +31,16 @@ fn establish_pool() -> Pool {
             )
         });
 
-    {
-        info!("running database migrations…");
-        let mut conn = pool
-            .get()
-            .unwrap_or_else(|e| panic!("failed to get connection: {e}"));
-
-        conn.run_pending_migrations(MIGRATIONS)
-            .unwrap_or_else(|e| panic!("failed to run migrations: {e}"));
-    }
-
     info!("established connection pool with {}", *DATABASE_URL);
     pool
+}
+
+pub fn run_migrations() {
+    info!("running database migrations…");
+    let mut conn = POOL
+        .get()
+        .unwrap_or_else(|e| panic!("failed to get connection: {e}"));
+
+    conn.run_pending_migrations(MIGRATIONS)
+        .unwrap_or_else(|e| panic!("failed to run migrations: {e}"));
 }

@@ -5,7 +5,7 @@ use crate::middleware::{auth::layers::kessoku_private_ci_authorization, logging:
 use axum::{
     Router,
     middleware::from_fn,
-    routing::{delete, get, post},
+    routing::{get, post},
 };
 
 pub mod dates;
@@ -14,11 +14,17 @@ pub mod root;
 
 /// Routes an [`Router`] with the endpoints defined by this module.
 pub fn route_from(app: Router) -> Router {
-    app.route("/", get(root::get).post(root::post).delete(root::delete))
-        .route("/dates", get(dates::get))
-        .route(
-            "/internal/update",
-            post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
-        )
-        .layer(from_fn(log_request))
+    app.route(
+        "/",
+        get(root::get)
+            .post(root::post)
+            .put(root::put)
+            .delete(root::delete),
+    )
+    .route("/dates", get(dates::get))
+    .route(
+        "/internal/update",
+        post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
+    )
+    .layer(from_fn(log_request))
 }

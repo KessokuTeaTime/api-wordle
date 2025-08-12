@@ -1,7 +1,6 @@
 //! Endpoint `/dates`.
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use serde_json::json;
 
 use crate::database::{POOL, puzzles::get_dates, types::PuzzleDate};
 

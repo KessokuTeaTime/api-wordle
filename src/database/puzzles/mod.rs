@@ -1,29 +1,22 @@
-use crate::schema;
+use crate::{
+    database::types::{NewPuzzle, Puzzle},
+    schema,
+};
 
-use super::types::{PuzzleDate, PuzzleWord};
+use super::types::{PuzzleDate, PuzzleSolution};
 
 use api_framework::framework::State;
 use diesel::{PgConnection, QueryDsl, RunQueryDsl, prelude::*};
-use serde::{Deserialize, Serialize};
-use tracing::{error, info, warn};
+use tracing::{error, info, trace, warn};
 
-#[derive(Debug, Queryable, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = schema::puzzles)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Puzzle {
-    pub date: PuzzleDate,
-    pub puzzle: PuzzleWord,
-    pub is_deleted: bool,
-}
+pub fn get_puzzles(conn: &mut PgConnection) -> Vec<Puzzle> {
+    use schema::puzzles::dsl::puzzles;
 
-impl Puzzle {
-    pub fn new(date: PuzzleDate, puzzle: PuzzleWord) -> Self {
-        Self {
-            date,
-            puzzle,
-            is_deleted: false,
-        }
-    }
+    info!("getting puzzles");
+    let p = puzzles.load::<Puzzle>(conn).unwrap_or(Vec::new());
+
+    trace!("got puzzles: {p:?}");
+    p
 }
 
 pub fn get_dates(conn: &mut PgConnection) -> Vec<PuzzleDate> {
@@ -35,74 +28,111 @@ pub fn get_dates(conn: &mut PgConnection) -> Vec<PuzzleDate> {
         .load::<PuzzleDate>(conn)
         .unwrap_or(Vec::new());
 
-    info!("got dates: {dates:?}");
+    trace!("got dates: {dates:?}");
     dates
 }
 
-pub fn get_puzzle(conn: &mut PgConnection, date: &PuzzleDate) -> Option<PuzzleWord> {
-    use schema::puzzles::dsl::{date as d_date, puzzle as d_puzzle, puzzles};
+pub fn get_puzzle(conn: &mut PgConnection, date: &PuzzleDate) -> Option<Puzzle> {
+    use schema::puzzles::dsl::{date as d_date, puzzles};
 
     info!("getting puzzle for {date}…");
     let puzzle = puzzles
         .filter(d_date.eq(date))
-        .select(d_puzzle)
-        .get_result::<PuzzleWord>(conn)
+        .get_result::<Puzzle>(conn)
         .ok();
 
     match &puzzle {
         Some(puzzle) => info!("got puzzle for {date}: {puzzle}"),
-        None => warn!("no puzzle found for {date}"),
+        None => warn!("no puzzles found for {date}!"),
     }
     puzzle
 }
 
-pub fn delete_puzzle(conn: &mut PgConnection, date: &PuzzleDate) {
-    use schema::puzzles::dsl::puzzles;
-
-    warn!("deleting puzzle at {date}…");
-    drop(diesel::delete(puzzles.find(date)).execute(conn));
-}
-
-pub fn insert_or_update_puzzle(
+pub fn put_puzzle(
     conn: &mut PgConnection,
     date: &PuzzleDate,
-    puzzle: &PuzzleWord,
+    solution: &PuzzleSolution,
+) -> QueryResult<()> {
+    use schema::puzzles::dsl::puzzles;
+
+    info!("putting puzzle for {date}…");
+    match diesel::insert_into(puzzles)
+        .values(NewPuzzle {
+            date: date.to_owned(),
+            solution: solution.to_owned(),
+        })
+        .execute(conn)
+    {
+        Ok(_) => {
+            info!("put solution {solution} for {date}");
+            Ok(())
+        }
+        Err(err) => {
+            error!("failed to put solution {solution} for {date}: {err}");
+            Err(err)
+        }
+    }
+}
+
+pub fn delete_puzzle(conn: &mut PgConnection, date: &PuzzleDate) -> QueryResult<()> {
+    use schema::puzzles::dsl::puzzles;
+
+    warn!("deleting puzzle for {date}…");
+    match diesel::delete(puzzles.find(date)).execute(conn) {
+        Ok(_) => {
+            info!("deleted puzzle for {date}");
+            Ok(())
+        }
+        Err(err) => {
+            error!("failed to delete puzzle for {date}: {err}");
+            Err(err)
+        }
+    }
+}
+
+pub fn insert_or_update_solution(
+    conn: &mut PgConnection,
+    date: &PuzzleDate,
+    solution: &PuzzleSolution,
 ) -> State<()> {
-    use schema::puzzles::dsl::{puzzle as d_puzzle, puzzles};
+    use schema::puzzles::dsl::{puzzles, solution as d_solution};
 
     let query = puzzles.find(date);
     if let Ok(existing_puzzle) = query.get_result::<Puzzle>(conn) {
         // Updates the existing puzzle
         info!(
-            "updating existing puzzle for {date} from {} to {puzzle}…",
-            existing_puzzle.puzzle
+            "updating existing solution for {date} from {} to {solution}…",
+            existing_puzzle.solution
         );
 
-        if *puzzle == existing_puzzle.puzzle {
-            warn!("puzzle for {date} isn't changed: {puzzle}");
+        if *solution == existing_puzzle.solution {
+            warn!("solution for {date} isn't changed: {solution}");
             State::Success(())
         } else {
             match diesel::update(query)
-                .set(d_puzzle.eq(&puzzle))
+                .set(d_solution.eq(&solution))
                 .execute(conn)
             {
                 Ok(_) => State::Success(()),
                 Err(err) => {
-                    error!("failed to update puzzle for {date}: {err}");
+                    error!("failed to update solution for {date}: {err}");
                     State::Retry
                 }
             }
         }
     } else {
         // Inserts a puzzle
-        info!("inserting puzzle {puzzle} for {date}…");
+        info!("inserting solution {solution} for {date}…");
         match diesel::insert_into(puzzles)
-            .values(Puzzle::new(date.clone(), puzzle.to_owned()))
+            .values(NewPuzzle {
+                date: date.to_owned(),
+                solution: solution.to_owned(),
+            })
             .execute(conn)
         {
             Ok(_) => State::Success(()),
             Err(err) => {
-                error!("failed to insert puzzle for {date}: {err}");
+                error!("failed to insert solution for {date}: {err}");
                 State::Retry
             }
         }
