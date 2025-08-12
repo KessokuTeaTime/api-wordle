@@ -2,19 +2,14 @@
 
 use std::error::Error as _;
 
-use api_framework::{
-    framework::{State, retry_if_possible},
-    unwrap,
-};
+use api_framework::framework::State;
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
-use diesel::PgConnection;
 use serde::Deserialize;
-use serde_json::json;
 use tracing::{error, info};
 
 use crate::database::{
     POOL,
-    puzzles::{delete_puzzle, get_puzzle, get_puzzles, insert_or_update_solution, put_puzzle},
+    puzzles::{delete_solution, get_puzzle, get_puzzles, insert_solution, update_solution},
     types::{NewPuzzle, Puzzle, PuzzleDate, PuzzleSolution},
 };
 
@@ -101,7 +96,7 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
             Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
         }
     } else {
-        let puzzles: Vec<NewPuzzle> = get_puzzles(&mut conn)
+        let puzzles: Vec<NewPuzzle> = get_puzzles(&mut conn, false)
             .into_iter()
             .map(Puzzle::to_new_puzzle)
             .collect();
@@ -110,96 +105,27 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct PostParams {
-    black_boxed: Option<bool>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct PostPayload {
     date: String,
-    solution: Option<String>,
+    solution: String,
 }
 
-pub async fn post(
-    Query(params): Query<PostParams>,
-    Json(payload): Json<PostPayload>,
-) -> impl IntoResponse {
-    let is_in_black_box = params.black_boxed.unwrap_or(false);
+pub async fn post(Json(payload): Json<PostPayload>) -> impl IntoResponse {
     let mut conn = match POOL.get() {
         Ok(conn) => conn,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    match PuzzleDate::new(&payload.date) {
-        Ok(date) => {
-            if let Some(solution) = payload.solution {
-                // Tries to put a solution
-                if !is_in_black_box && let Some(puzzle) = get_puzzle(&mut conn, &date) {
-                    // A puzzle exists, and we don't want to override it
-                    (StatusCode::OK, puzzle.to_string()).into_response()
-                } else {
-                    // No puzzles found
-                    match PuzzleSolution::new(&solution) {
-                        Ok(solution) => match put_puzzle(&mut conn, &date, &solution) {
-                            Ok(_) => (StatusCode::CREATED).into_response(),
-                            Err(err) => {
-                                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                            }
-                        },
-                        Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
-                    }
-                }
-            } else if let Some(puzzle) = get_puzzle(&mut conn, &date) {
-                // Tries to get an existing solution
-                if is_in_black_box {
-                    (StatusCode::OK, Json(puzzle)).into_response()
-                } else {
-                    (StatusCode::CONFLICT).into_response()
-                }
-            } else {
-                // We don't have any information on the solution
-                if is_in_black_box {
-                    // Generates a solution and puts it into the database
-                    let mut retry: u8 = 0;
-                    loop {
-                        match post_transaction(&mut conn, &date).await {
-                            State::Success(str) => {
-                                info!("transaction succeed!");
-                                break (StatusCode::CREATED, str).into_response();
-                            }
-                            State::Retry => match retry_if_possible(&mut retry) {
-                                Ok(_) => continue,
-                                Err(_) => {
-                                    break (StatusCode::INTERNAL_SERVER_ERROR).into_response();
-                                }
-                            },
-                            State::Stop => {
-                                error!("transaction failed!");
-                                break (StatusCode::INTERNAL_SERVER_ERROR).into_response();
-                            }
-                        }
-                    }
-                } else {
-                    // What can I say?
-                    (StatusCode::NOT_FOUND).into_response()
-                }
-            }
-        }
-        Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+    match (
+        PuzzleDate::new(&payload.date),
+        PuzzleSolution::new(&payload.solution),
+    ) {
+        (Ok(date), Ok(solution)) => match insert_solution(&mut conn, &date, &solution) {
+            Ok(_) => (StatusCode::CREATED).into_response(),
+            Err(_) => (StatusCode::CONFLICT).into_response(),
+        },
+        _ => (StatusCode::BAD_REQUEST).into_response(),
     }
-}
-
-async fn post_transaction(conn: &mut PgConnection, date: &PuzzleDate) -> State<String> {
-    let str = unwrap!(fetch_random_word().await);
-    let solution = match PuzzleSolution::new(&str) {
-        Ok(word) => word,
-        Err(err) => {
-            error!("{}", err);
-            return State::Retry;
-        }
-    };
-
-    insert_or_update_solution(conn, date, &solution).map(|_| str)
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -214,27 +140,15 @@ pub async fn put(Json(payload): Json<PutPayload>) -> impl IntoResponse {
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    match PuzzleDate::new(&payload.date) {
-        Ok(date) => {
-            match PuzzleSolution::new(&payload.solution) {
-                Ok(solution) => {
-                    if get_puzzle(&mut conn, &date).is_some() {
-                        // There is an existing puzzle
-                        match put_puzzle(&mut conn, &date, &solution) {
-                            Ok(_) => (StatusCode::CREATED).into_response(),
-                            Err(err) => {
-                                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                            }
-                        }
-                    } else {
-                        // There isn't any existing puzzles
-                        (StatusCode::NOT_FOUND).into_response()
-                    }
-                }
-                Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-            }
-        }
-        Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+    match (
+        PuzzleDate::new(&payload.date),
+        PuzzleSolution::new(&payload.solution),
+    ) {
+        (Ok(date), Ok(solution)) => match update_solution(&mut conn, &date, &solution) {
+            Ok(_) => (StatusCode::CREATED).into_response(),
+            Err(_) => (StatusCode::NOT_FOUND).into_response(),
+        },
+        _ => (StatusCode::BAD_REQUEST).into_response(),
     }
 }
 
@@ -253,7 +167,7 @@ pub async fn delete(Query(params): Query<DeleteParams>) -> impl IntoResponse {
         Ok(date) => {
             if get_puzzle(&mut conn, &date).is_some() {
                 // There is an existing puzzle
-                match delete_puzzle(&mut conn, &date) {
+                match delete_solution(&mut conn, &date) {
                     Ok(_) => (StatusCode::NO_CONTENT).into_response(),
                     Err(err) => {
                         (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()

@@ -10,7 +10,7 @@ pub async fn get() -> impl IntoResponse {
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    let dates: Vec<String> = get_dates(&mut conn)
+    let dates: Vec<String> = get_dates(&mut conn, false)
         .iter()
         .map(PuzzleDate::to_string)
         .collect();

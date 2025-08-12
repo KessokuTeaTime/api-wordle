@@ -9,6 +9,7 @@ use axum::{
 };
 
 pub mod dates;
+pub mod generate;
 pub mod internal;
 pub mod root;
 
@@ -22,6 +23,7 @@ pub fn route_from(app: Router) -> Router {
             .delete(root::delete),
     )
     .route("/dates", get(dates::get))
+    .route("/generate", post(generate::post))
     .route(
         "/internal/update",
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),

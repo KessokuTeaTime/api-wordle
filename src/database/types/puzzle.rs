@@ -36,10 +36,10 @@ impl Display for Puzzle {
 }
 
 impl Puzzle {
-    pub fn new(date: PuzzleDate, puzzle: PuzzleSolution) -> Self {
+    pub fn new(date: PuzzleDate, solution: PuzzleSolution) -> Self {
         Self {
             date,
-            solution: puzzle,
+            solution,
             is_deleted: false,
         }
     }
