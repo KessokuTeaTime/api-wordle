@@ -89,7 +89,7 @@ pub async fn get(Query(params): Query<Params>) -> impl IntoResponse {
     };
 
     if let Some(puzzle) = get_puzzle(&mut conn, &params.date) {
-        (StatusCode::OK, puzzle.puzzle.to_string()).into_response()
+        (StatusCode::OK, puzzle.to_string()).into_response()
     } else {
         (StatusCode::NOT_FOUND).into_response()
     }
@@ -102,7 +102,7 @@ pub async fn post(Query(params): Query<Params>) -> impl IntoResponse {
     };
 
     if let Some(puzzle) = get_puzzle(&mut conn, &params.date) {
-        (StatusCode::OK, puzzle.puzzle.to_string()).into_response()
+        (StatusCode::OK, puzzle.to_string()).into_response()
     } else {
         let mut retry: u8 = 0;
         loop {
