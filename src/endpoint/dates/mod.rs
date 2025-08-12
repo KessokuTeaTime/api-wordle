@@ -15,5 +15,5 @@ pub async fn get() -> impl IntoResponse {
         .iter()
         .map(PuzzleDate::to_string)
         .collect();
-    (StatusCode::OK, Json(json!({ "dates": dates }))).into_response()
+    (StatusCode::OK, Json(dates)).into_response()
 }

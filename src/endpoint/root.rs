@@ -6,15 +6,14 @@ use api_framework::{
     framework::{State, retry_if_possible},
     unwrap,
 };
-use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
+use axum::{extract::Query, http::StatusCode, response::IntoResponse};
 use diesel::PgConnection;
 use serde::Deserialize;
-use serde_json::json;
 use tracing::{error, info};
 
 use crate::database::{
     POOL,
-    puzzles::{get_puzzle, insert_or_update_puzzle},
+    puzzles::{delete_puzzle, get_puzzle, insert_or_update_puzzle},
     types::{PuzzleDate, PuzzleWord},
 };
 
@@ -83,25 +82,34 @@ pub struct Params {
     date: PuzzleDate,
 }
 
-pub async fn get(Query(payload): Query<Params>) -> impl IntoResponse {
-    post(Query(payload)).await
-}
-
-pub async fn post(Query(payload): Query<Params>) -> impl IntoResponse {
+pub async fn get(Query(params): Query<Params>) -> impl IntoResponse {
     let mut conn = match POOL.get() {
         Ok(conn) => conn,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    if let Some(puzzle) = get_puzzle(&mut conn, &payload.date) {
+    if let Some(puzzle) = get_puzzle(&mut conn, &params.date) {
+        (StatusCode::OK, puzzle.puzzle.to_string()).into_response()
+    } else {
+        (StatusCode::NOT_FOUND).into_response()
+    }
+}
+
+pub async fn post(Query(params): Query<Params>) -> impl IntoResponse {
+    let mut conn = match POOL.get() {
+        Ok(conn) => conn,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+    };
+
+    if let Some(puzzle) = get_puzzle(&mut conn, &params.date) {
         (StatusCode::OK, puzzle.puzzle.to_string()).into_response()
     } else {
         let mut retry: u8 = 0;
         loop {
-            match post_transaction(&mut conn, &payload.date).await {
+            match post_transaction(&mut conn, &params.date).await {
                 State::Success(str) => {
                     info!("transaction succeed!");
-                    break (StatusCode::CREATED, Json(json!({ "puzzle": str }))).into_response();
+                    break (StatusCode::CREATED, str).into_response();
                 }
                 State::Retry => match retry_if_possible(&mut retry) {
                     Ok(_) => continue,
@@ -127,4 +135,14 @@ async fn post_transaction(conn: &mut PgConnection, date: &PuzzleDate) -> State<S
     };
 
     insert_or_update_puzzle(conn, date, &word).map(|_| str)
+}
+
+pub async fn delete(Query(params): Query<Params>) -> impl IntoResponse {
+    let mut conn = match POOL.get() {
+        Ok(conn) => conn,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+    };
+
+    delete_puzzle(&mut conn, &params.date);
+    (StatusCode::OK).into_response()
 }

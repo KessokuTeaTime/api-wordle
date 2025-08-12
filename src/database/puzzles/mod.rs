@@ -41,6 +41,12 @@ pub fn get_puzzle(conn: &mut PgConnection, date: &PuzzleDate) -> Option<Puzzle> 
     puzzles.find(date).get_result::<Puzzle>(conn).ok()
 }
 
+pub fn delete_puzzle(conn: &mut PgConnection, date: &PuzzleDate) {
+    use schema::puzzles::dsl::puzzles;
+
+    drop(diesel::delete(puzzles.find(date)).execute(conn));
+}
+
 pub fn insert_or_update_puzzle(
     conn: &mut PgConnection,
     date: &PuzzleDate,

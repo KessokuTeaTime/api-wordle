@@ -5,7 +5,7 @@ use crate::middleware::{auth::layers::kessoku_private_ci_authorization, logging:
 use axum::{
     Router,
     middleware::from_fn,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 
 pub mod dates;
@@ -16,6 +16,7 @@ pub mod root;
 pub fn route_from(mut app: Router) -> Router {
     app = route_gets(app);
     app = route_posts(app);
+    app = route_deletes(app);
     app.layer(from_fn(log_request))
 }
 
@@ -30,4 +31,8 @@ fn route_posts(app: Router) -> Router {
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
     )
     .route("/", post(root::post))
+}
+
+fn route_deletes(app: Router) -> Router {
+    app.route("/", delete(root::delete))
 }
