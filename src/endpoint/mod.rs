@@ -2,10 +2,15 @@
 
 use crate::middleware::{auth::layers::kessoku_private_ci_authorization, logging::log_request};
 
-use axum::{Router, middleware::from_fn, routing::post};
+use axum::{
+    Router,
+    middleware::from_fn,
+    routing::{get, post},
+};
 
+pub mod dates;
 pub mod internal;
-pub mod wordle;
+pub mod root;
 
 /// Routes an [`Router`] with the endpoints defined by this module.
 pub fn route_from(mut app: Router) -> Router {
@@ -15,7 +20,7 @@ pub fn route_from(mut app: Router) -> Router {
 }
 
 fn route_gets(app: Router) -> Router {
-    app
+    app.route("/dates", get(dates::get))
 }
 
 fn route_posts(app: Router) -> Router {
@@ -23,4 +28,5 @@ fn route_posts(app: Router) -> Router {
         "/internal/update",
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
     )
+    .route("/", post(root::post))
 }

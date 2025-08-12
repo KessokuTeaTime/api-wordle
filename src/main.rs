@@ -1,18 +1,14 @@
 //! KessokuTeaTime API backend for the wordle game.
 
-use crate::{
-    database::run_migrations,
-    env::{
-        DATABASE_URL, PORT,
-        info::{BUILD_TIMESTAMP, GIT_HASH},
-    },
+use crate::env::{
+    PORT,
+    info::{BUILD_TIMESTAMP, GIT_HASH},
 };
 
 use std::net::SocketAddr;
 
 use api_framework::shutdown;
 use axum::Router;
-use diesel::{Connection, PgConnection};
 use tokio::net::TcpListener;
 use tracing::{info, trace};
 

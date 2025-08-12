@@ -1,10 +1,13 @@
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
-use std::{fmt, io::Write as _};
+use std::{
+    fmt::{self, Display},
+    io::Write as _,
+};
 
 use diesel::{
     backend::Backend,
-    deserialize::{self, FromSql},
+    deserialize::{self, FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
     serialize::{self, Output, ToSql},
@@ -12,7 +15,17 @@ use diesel::{
 };
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, SqlType, AsExpression,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    SqlType,
+    AsExpression,
+    FromSqlRow,
 )]
 #[diesel(sql_type = Text)]
 pub struct PuzzleDate(NaiveDate);
@@ -34,9 +47,11 @@ impl PuzzleDate {
     pub fn inner(&self) -> NaiveDate {
         self.0
     }
+}
 
-    pub fn to_string(&self) -> String {
-        self.0.format("%Y-%m-%d").to_string()
+impl Display for PuzzleDate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.format("%Y-%m-%d"))
     }
 }
 
@@ -46,7 +61,7 @@ pub enum PuzzleDateError {
     TooEarly,
 }
 
-impl fmt::Display for PuzzleDateError {
+impl Display for PuzzleDateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PuzzleDateError::InvalidFormat => write!(f, "the date must be formatted as YYYY-MM-DD"),

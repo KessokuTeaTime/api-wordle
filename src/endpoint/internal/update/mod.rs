@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use api_framework::{
     framework::{
         State,
-        queued_async::{QueuedAsyncFramework, QueuedAsyncFrameworkContext, unwrap},
+        queued_async::{QueuedAsyncFramework, QueuedAsyncFrameworkContext},
+        unwrap,
     },
     shutdown::{SHUTDOWN, ShutdownAction},
     static_lazy_lock,
@@ -17,7 +18,14 @@ use axum::{Json, http::StatusCode, response::IntoResponse};
 use serde::Deserialize;
 
 static_lazy_lock! {
-    FRAMEWORK: QueuedAsyncFramework<String> = QueuedAsyncFramework::new();
+    QUEUED_ASYNC: QueuedAsyncFramework<String> = QueuedAsyncFramework::new();
+}
+
+/// The payload of the post.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Payload {
+    /// The run id of the GitHub workflow.
+    pub run_id: String,
 }
 
 /// The client posted an api update request.
@@ -25,7 +33,7 @@ static_lazy_lock! {
 ///
 /// See: [`Payload`], [transaction]
 pub async fn post(Json(payload): Json<Payload>) -> impl IntoResponse {
-    tokio::spawn(FRAMEWORK.run(payload.run_id.clone(), move |cx| {
+    tokio::spawn(QUEUED_ASYNC.run(payload.run_id.clone(), move |cx| {
         Box::pin(transaction(cx.clone(), payload.clone()))
     }));
 
@@ -44,11 +52,4 @@ async fn transaction(cx: QueuedAsyncFrameworkContext, payload: Payload) -> State
     }));
 
     State::Success(())
-}
-
-/// The payload of the post.
-#[derive(Debug, Clone, Deserialize)]
-pub struct Payload {
-    /// The run id of the GitHub workflow.
-    pub run_id: String,
 }

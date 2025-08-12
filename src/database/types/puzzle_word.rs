@@ -1,8 +1,11 @@
-use std::{fmt, io::Write as _};
+use std::{
+    fmt::{self, Display},
+    io::Write as _,
+};
 
 use diesel::{
     backend::Backend,
-    deserialize::{self, FromSql},
+    deserialize::{self, FromSql, FromSqlRow},
     expression::AsExpression,
     pg::Pg,
     serialize::{self, Output, ToSql},
@@ -11,28 +14,38 @@ use diesel::{
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, SqlType, AsExpression,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    SqlType,
+    AsExpression,
+    FromSqlRow,
 )]
 #[diesel(sql_type = Text)]
 pub struct PuzzleWord([char; 5]);
 
 impl PuzzleWord {
-    pub fn new(word: &str) -> Result<Self, PuzzleWordError> {
-        let vec: Vec<char> = word.chars().into_iter().collect();
+    pub fn new(str: &str) -> Result<Self, PuzzleWordError> {
+        let vec: Vec<char> = str.chars().map(|c| c.to_ascii_lowercase()).collect();
         match vec.try_into() {
             Ok(arr) => Ok(Self(arr)),
-            Err(_) => Err(PuzzleWordError::TooFewOrTooManyLetters(
-                word.chars().count(),
-            )),
+            Err(_) => Err(PuzzleWordError::TooFewOrTooManyLetters(str.chars().count())),
         }
     }
 
     pub fn inner(&self) -> [char; 5] {
         self.0
     }
+}
 
-    pub fn to_string(&self) -> String {
-        self.0.map(|c| c.to_string()).join("")
+impl Display for PuzzleWord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.map(|c| c.to_string()).join(""))
     }
 }
 
@@ -41,7 +54,7 @@ pub enum PuzzleWordError {
     TooFewOrTooManyLetters(usize),
 }
 
-impl fmt::Display for PuzzleWordError {
+impl Display for PuzzleWordError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PuzzleWordError::TooFewOrTooManyLetters(count) => {
