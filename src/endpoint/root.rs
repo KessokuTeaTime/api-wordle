@@ -6,7 +6,7 @@ use api_framework::{
     framework::{State, retry_if_possible},
     unwrap,
 };
-use axum::{Json, http::StatusCode, response::IntoResponse};
+use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
 use diesel::PgConnection;
 use serde::Deserialize;
 use serde_json::json;
@@ -79,15 +79,15 @@ pub async fn fetch_random_word() -> State<String> {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Payload {
+pub struct Params {
     date: PuzzleDate,
 }
 
-pub async fn get(Json(payload): Json<Payload>) -> impl IntoResponse {
-    post(Json(payload)).await
+pub async fn get(Query(payload): Query<Params>) -> impl IntoResponse {
+    post(Query(payload)).await
 }
 
-pub async fn post(Json(payload): Json<Payload>) -> impl IntoResponse {
+pub async fn post(Query(payload): Query<Params>) -> impl IntoResponse {
     let mut conn = match POOL.get() {
         Ok(conn) => conn,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
