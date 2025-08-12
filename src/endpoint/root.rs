@@ -151,29 +151,38 @@ pub async fn post(
                 }
             } else if let Some(puzzle) = get_puzzle(&mut conn, &date) {
                 // Tries to get an existing solution
-                (StatusCode::OK, Json(puzzle)).into_response()
-            } else if is_in_black_box {
-                // Generates a solution and puts it into the database
-                let mut retry: u8 = 0;
-                loop {
-                    match post_transaction(&mut conn, &date).await {
-                        State::Success(str) => {
-                            info!("transaction succeed!");
-                            break (StatusCode::CREATED, str).into_response();
-                        }
-                        State::Retry => match retry_if_possible(&mut retry) {
-                            Ok(_) => continue,
-                            Err(_) => break (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
-                        },
-                        State::Stop => {
-                            error!("transaction failed!");
-                            break (StatusCode::INTERNAL_SERVER_ERROR).into_response();
-                        }
-                    }
+                if is_in_black_box {
+                    (StatusCode::OK, Json(puzzle)).into_response()
+                } else {
+                    (StatusCode::CONFLICT).into_response()
                 }
             } else {
-                // What can I say?
-                (StatusCode::NOT_FOUND).into_response()
+                // We don't have any information on the solution
+                if is_in_black_box {
+                    // Generates a solution and puts it into the database
+                    let mut retry: u8 = 0;
+                    loop {
+                        match post_transaction(&mut conn, &date).await {
+                            State::Success(str) => {
+                                info!("transaction succeed!");
+                                break (StatusCode::CREATED, str).into_response();
+                            }
+                            State::Retry => match retry_if_possible(&mut retry) {
+                                Ok(_) => continue,
+                                Err(_) => {
+                                    break (StatusCode::INTERNAL_SERVER_ERROR).into_response();
+                                }
+                            },
+                            State::Stop => {
+                                error!("transaction failed!");
+                                break (StatusCode::INTERNAL_SERVER_ERROR).into_response();
+                            }
+                        }
+                    }
+                } else {
+                    // What can I say?
+                    (StatusCode::NOT_FOUND).into_response()
+                }
             }
         }
         Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
