@@ -1,8 +1,11 @@
 //! The API endpoints.
 
-use crate::middleware::logging::log_request;
+use crate::middleware::{auth::layers::kessoku_private_ci_authorization, logging::log_request};
 
-use axum::{Router, middleware::from_fn};
+use axum::{Router, middleware::from_fn, routing::post};
+
+pub mod internal;
+pub mod wordle;
 
 /// Routes an [`Router`] with the endpoints defined by this module.
 pub fn route_from(mut app: Router) -> Router {
@@ -16,5 +19,8 @@ fn route_gets(app: Router) -> Router {
 }
 
 fn route_posts(app: Router) -> Router {
-    app
+    app.route(
+        "/api/internal/update/wordle",
+        post(internal::update::wordle::post).route_layer(kessoku_private_ci_authorization()),
+    )
 }

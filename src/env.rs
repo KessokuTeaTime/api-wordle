@@ -1,6 +1,6 @@
 //! Defines environment variables.
 
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use api_framework::{env::parse_env, static_lazy_lock};
 
@@ -15,6 +15,16 @@ pub mod info {
 static_lazy_lock! {
     pub PORT: u16 = parse_env!("PORT" => |s| s.parse::<u16>(); anyhow).expect("PORT not set in environment");
     "The port to listen to."
+}
+
+static_lazy_lock! {
+    pub KTT_API_USERNAME: String = env::var("KTT_API_USERNAME").expect("KTT_API_USERNAME not set in environment");
+    "The username of the API key."
+}
+
+static_lazy_lock! {
+    pub KTT_API_PASSWORD: String = env::var("KTT_API_PASSWORD").expect("KTT_API_PASSWORD not set in environment");
+    "The password of the API key."
 }
 
 static_lazy_lock! {
