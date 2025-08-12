@@ -9,7 +9,10 @@ use tracing::{error, info};
 
 use crate::database::{
     POOL,
-    puzzles::{delete_solution, get_puzzle, get_puzzles, insert_solution, update_solution},
+    puzzles::{
+        delete_solution, get_puzzle, get_puzzles, insert_or_update_solution, insert_solution,
+        update_solution,
+    },
     types::{NewPuzzle, Puzzle, PuzzleDate, PuzzleSolution},
 };
 
@@ -48,15 +51,7 @@ pub async fn fetch_random_word() -> State<String> {
                 error!("invalid random word data: no word is found!");
                 State::Stop
             }
-            [
-                RandomWord {
-                    word,
-                    length: _,
-                    category: _,
-                    language: _,
-                },
-                ..,
-            ] => {
+            [RandomWord { word, .. }, ..] => {
                 info!("fetched random word {}", word);
                 State::Success(word.to_owned())
             }
@@ -76,6 +71,7 @@ pub async fn fetch_random_word() -> State<String> {
 #[derive(Debug, Clone, Deserialize)]
 pub struct GetParams {
     date: Option<String>,
+    generate_if_missing: Option<bool>,
 }
 
 pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
@@ -85,15 +81,32 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
     };
 
     if let Some(date) = params.date {
-        match PuzzleDate::new(&date) {
-            Ok(date) => {
-                if let Some(puzzle) = get_puzzle(&mut conn, &date) {
-                    (StatusCode::OK, Json(puzzle.to_new_puzzle())).into_response()
-                } else {
-                    (StatusCode::NOT_FOUND).into_response()
+        let date = match PuzzleDate::new(&date) {
+            Ok(date) => date,
+            Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+        };
+
+        if let Some(puzzle) = get_puzzle(&mut conn, &date) {
+            (StatusCode::OK, Json(puzzle.to_new_puzzle())).into_response()
+        } else if params.generate_if_missing.unwrap_or(false) {
+            let str = match fetch_random_word().await {
+                State::Success(str) => str,
+                _ => return (StatusCode::NOT_FOUND).into_response(),
+            };
+
+            let solution = match PuzzleSolution::new(&str) {
+                Ok(solution) => solution,
+                Err(err) => {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
                 }
+            };
+
+            match insert_or_update_solution(&mut conn, &date, &solution) {
+                Ok(_) => (StatusCode::CREATED, Json(Puzzle::new(date, solution))).into_response(),
+                Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
             }
-            Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+        } else {
+            (StatusCode::NOT_FOUND).into_response()
         }
     } else {
         let puzzles: Vec<NewPuzzle> = get_puzzles(&mut conn, false)
@@ -116,15 +129,17 @@ pub async fn post(Json(payload): Json<PostPayload>) -> impl IntoResponse {
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    match (
+    let (date, solution) = match (
         PuzzleDate::new(&payload.date),
         PuzzleSolution::new(&payload.solution),
     ) {
-        (Ok(date), Ok(solution)) => match insert_solution(&mut conn, &date, &solution) {
-            Ok(_) => (StatusCode::CREATED).into_response(),
-            Err(_) => (StatusCode::CONFLICT).into_response(),
-        },
-        _ => (StatusCode::BAD_REQUEST).into_response(),
+        (Ok(date), Ok(solution)) => (date, solution),
+        _ => return (StatusCode::BAD_REQUEST).into_response(),
+    };
+
+    match insert_solution(&mut conn, &date, &solution) {
+        Ok(_) => (StatusCode::CREATED).into_response(),
+        Err(_) => (StatusCode::CONFLICT).into_response(),
     }
 }
 
@@ -140,15 +155,17 @@ pub async fn put(Json(payload): Json<PutPayload>) -> impl IntoResponse {
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    match (
+    let (date, solution) = match (
         PuzzleDate::new(&payload.date),
         PuzzleSolution::new(&payload.solution),
     ) {
-        (Ok(date), Ok(solution)) => match update_solution(&mut conn, &date, &solution) {
-            Ok(_) => (StatusCode::CREATED).into_response(),
-            Err(_) => (StatusCode::NOT_FOUND).into_response(),
-        },
-        _ => (StatusCode::BAD_REQUEST).into_response(),
+        (Ok(date), Ok(solution)) => (date, solution),
+        _ => return (StatusCode::BAD_REQUEST).into_response(),
+    };
+
+    match update_solution(&mut conn, &date, &solution) {
+        Ok(_) => (StatusCode::CREATED).into_response(),
+        Err(_) => (StatusCode::NOT_FOUND).into_response(),
     }
 }
 
@@ -163,21 +180,19 @@ pub async fn delete(Query(params): Query<DeleteParams>) -> impl IntoResponse {
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    match PuzzleDate::new(&params.date) {
-        Ok(date) => {
-            if get_puzzle(&mut conn, &date).is_some() {
-                // There is an existing puzzle
-                match delete_solution(&mut conn, &date) {
-                    Ok(_) => (StatusCode::NO_CONTENT).into_response(),
-                    Err(err) => {
-                        (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
-                    }
-                }
-            } else {
-                // There isn't any existing puzzles
-                (StatusCode::NOT_FOUND).into_response()
-            }
+    let date = match PuzzleDate::new(&params.date) {
+        Ok(date) => date,
+        Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+    };
+
+    if get_puzzle(&mut conn, &date).is_some() {
+        // There is an existing puzzle
+        match delete_solution(&mut conn, &date) {
+            Ok(_) => (StatusCode::NO_CONTENT).into_response(),
+            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
-        Err(err) => (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
+    } else {
+        // There isn't any existing puzzles
+        (StatusCode::NOT_FOUND).into_response()
     }
 }

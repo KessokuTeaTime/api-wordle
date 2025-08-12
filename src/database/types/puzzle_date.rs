@@ -77,7 +77,7 @@ where
     String: ToSql<Text, Pg>,
 {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        out.write_all(self.to_string().as_bytes());
+        out.write_all(self.to_string().as_bytes())?;
         Ok(serialize::IsNull::No)
     }
 }
