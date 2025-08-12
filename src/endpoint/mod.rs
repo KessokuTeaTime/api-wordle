@@ -20,7 +20,7 @@ fn route_gets(app: Router) -> Router {
 
 fn route_posts(app: Router) -> Router {
     app.route(
-        "/api/internal/update/wordle",
-        post(internal::update::wordle::post).route_layer(kessoku_private_ci_authorization()),
+        "/internal/update/wordle",
+        post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
     )
 }
