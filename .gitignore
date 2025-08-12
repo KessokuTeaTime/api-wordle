@@ -1,0 +1,16 @@
+*/target
+/target
+/.vscode
+/.idea
+/.VSCodeCounter
+/Cargo.lock
+*/Cargo.lock
+
+*.DS_STORE
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target
