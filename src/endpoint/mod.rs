@@ -20,7 +20,8 @@ pub fn route_from(mut app: Router) -> Router {
 }
 
 fn route_gets(app: Router) -> Router {
-    app.route("/dates", get(dates::get))
+    app.route("/", get(root::get))
+        .route("/dates", get(dates::get))
 }
 
 fn route_posts(app: Router) -> Router {

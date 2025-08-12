@@ -78,18 +78,27 @@ pub async fn fetch_random_word() -> State<String> {
     }
 }
 
-pub async fn post(Json(date): Json<PuzzleDate>) -> impl IntoResponse {
+#[derive(Debug, Clone, Deserialize)]
+pub struct Payload {
+    date: PuzzleDate,
+}
+
+pub async fn get(Json(payload): Json<Payload>) -> impl IntoResponse {
+    post(Json(payload)).await
+}
+
+pub async fn post(Json(payload): Json<Payload>) -> impl IntoResponse {
     let mut conn = match POOL.get() {
         Ok(conn) => conn,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
     };
 
-    if let Some(puzzle) = get_puzzle(&mut conn, &date) {
+    if let Some(puzzle) = get_puzzle(&mut conn, &payload.date) {
         (StatusCode::OK, puzzle.puzzle.to_string()).into_response()
     } else {
         let mut retry: u8 = 0;
         loop {
-            match post_transaction(&mut conn, &date).await {
+            match post_transaction(&mut conn, &payload.date).await {
                 State::Success(str) => {
                     info!("transaction succeed!");
                     break (StatusCode::CREATED, Json(json!({ "puzzle": str }))).into_response();
