@@ -34,7 +34,11 @@ pub fn get_puzzles(conn: &mut PgConnection, includes_deleted: bool) -> Vec<Puzzl
     };
     let p = query.load::<Puzzle>(conn).unwrap_or(Vec::new());
 
-    trace!("got puzzles: {p:?}");
+    if includes_deleted {
+        trace!("got active and deleted puzzles: {p:?}");
+    } else {
+        trace!("got active puzzles: {p:?}");
+    }
     p
 }
 
@@ -60,13 +64,24 @@ pub fn insert_solution(
     date: &PuzzleDate,
     solution: &PuzzleSolution,
 ) -> QueryResult<()> {
-    use schema::puzzles::dsl::puzzles;
+    use schema::puzzles::dsl::{is_deleted as d_is_deleted, puzzles, solution as d_solution};
 
-    info!("putting puzzle for {date}…");
-    match diesel::insert_into(puzzles)
-        .values(Puzzle::new(date.to_owned(), solution.to_owned()).to_new_puzzle())
-        .execute(conn)
+    info!("inserting puzzle for {date}…");
+    match if puzzles
+        .find(date)
+        .filter(d_is_deleted.eq(true))
+        .get_result::<Puzzle>(conn)
+        .is_ok()
     {
+        // A deleted puzzle exists
+        diesel::update(puzzles)
+            .set((d_solution.eq(solution), d_is_deleted.eq(false)))
+            .execute(conn)
+    } else {
+        diesel::insert_into(puzzles)
+            .values(Puzzle::new(date.to_owned(), solution.to_owned()).to_new_puzzle())
+            .execute(conn)
+    } {
         Ok(_) => {
             info!("inserted solution {solution} for {date}");
             Ok(())
@@ -83,10 +98,18 @@ pub fn update_solution(
     date: &PuzzleDate,
     solution: &PuzzleSolution,
 ) -> QueryResult<()> {
-    use schema::puzzles::dsl::{puzzles, solution as d_solution};
+    use schema::puzzles::dsl::{is_deleted as d_is_deleted, puzzles, solution as d_solution};
 
-    info!("updating puzzle for {date}…");
-    match diesel::update(puzzles.find(date))
+    let query = puzzles.find(date).filter(d_is_deleted.eq(false));
+    if query.get_result::<Puzzle>(conn).is_err() {
+        error!(
+            "failed to update solution for {date}: not found! a solution must be inserted before updating"
+        );
+        return Err(diesel::result::Error::NotFound);
+    }
+
+    info!("updating solution for {date}…");
+    match diesel::update(query)
         .set(d_solution.eq(solution))
         .execute(conn)
     {
@@ -104,7 +127,19 @@ pub fn update_solution(
 pub fn delete_solution(conn: &mut PgConnection, date: &PuzzleDate) -> QueryResult<()> {
     use schema::puzzles::dsl::{is_deleted as d_is_deleted, puzzles};
 
-    warn!("deleting puzzle for {date}…");
+    if puzzles
+        .find(date)
+        .filter(d_is_deleted.eq(false))
+        .get_result::<Puzzle>(conn)
+        .is_err()
+    {
+        error!(
+            "failed to delete solution for {date}: not found! a solution must be inserted before deleting"
+        );
+        return Err(diesel::result::Error::NotFound);
+    }
+
+    warn!("deleting solution for {date}…");
     match diesel::update(puzzles.find(date))
         .set(d_is_deleted.eq(true))
         .execute(conn)

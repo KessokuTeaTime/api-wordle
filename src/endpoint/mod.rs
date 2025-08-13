@@ -33,23 +33,29 @@ fn route_gets(app: Router) -> Router {
             "/auth",
             get(auth::get).route_layer(admin_password_authorization()),
         )
-        .route(
-            "/auth/test",
-            get(auth::get).route_layer(from_fn(authorize_paseto_token)),
-        )
 }
 
 fn route_posts(app: Router) -> Router {
-    app.route("/", post(root::post)).route(
+    app.route(
+        "/",
+        post(root::post).route_layer(from_fn(authorize_paseto_token)),
+    )
+    .route(
         "/internal/update",
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
     )
 }
 
 fn route_puts(app: Router) -> Router {
-    app.route("/", put(root::put))
+    app.route(
+        "/",
+        put(root::put).route_layer(from_fn(authorize_paseto_token)),
+    )
 }
 
 fn route_deletes(app: Router) -> Router {
-    app.route("/", delete(root::delete))
+    app.route(
+        "/",
+        delete(root::delete).route_layer(from_fn(authorize_paseto_token)),
+    )
 }

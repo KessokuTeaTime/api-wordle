@@ -1,7 +1,9 @@
 //! Middlewares for authorization.
 
+use std::net::SocketAddr;
+
 use axum::{
-    extract::{FromRequestParts, Request},
+    extract::{ConnectInfo, FromRequestParts, Request},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -14,6 +16,7 @@ use rusty_paseto::{
     core::{Key, Local, PasetoSymmetricKey, V4},
     prelude::{ExpirationClaim, PasetoBuilder, PasetoParser},
 };
+use tracing::info;
 
 use crate::env::PASETO_SYMMETRIC_KEY;
 
@@ -35,6 +38,7 @@ pub mod layers {
 }
 
 pub async fn generate_paseto_token() -> String {
+    info!("generating PASETO token…");
     let timeout = (chrono::Local::now() + chrono::Duration::minutes(5)).to_rfc3339();
     let key: PasetoSymmetricKey<_, _> = Key::from(*PASETO_SYMMETRIC_KEY).into();
 
@@ -50,15 +54,24 @@ pub async fn generate_paseto_token() -> String {
 /// 2. Client gets the encrypted token and decrypts it.
 /// 3. Client sends the decrypted token in its header to authorize.
 pub async fn authorize_paseto_token(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
     request: Request,
     next: Next,
 ) -> Response {
+    info!("authorizing PASETO token for {addr}…");
+
     let token = bearer.token().to_owned();
     let key: PasetoSymmetricKey<_, _> = Key::from(*PASETO_SYMMETRIC_KEY).into();
     let _json_value = match PasetoParser::<V4, Local>::new().parse(&token, &key) {
-        Ok(json_value) => json_value,
-        Err(_) => return (StatusCode::UNAUTHORIZED, "token unmatch").into_response(),
+        Ok(json_value) => {
+            info!("authorized {addr}!");
+            json_value
+        }
+        Err(_) => {
+            info!("failed to authorize {addr}");
+            return (StatusCode::UNAUTHORIZED, "token unmatch").into_response();
+        }
     };
 
     next.run(request).await
