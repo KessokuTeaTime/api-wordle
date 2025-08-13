@@ -1,20 +1,21 @@
 //! Endpoint root.
 
-use std::error::Error as _;
-
-use api_framework::framework::State;
-use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
-use serde::Deserialize;
-use tracing::{error, info};
-
 use crate::database::{
     POOL,
     puzzles::{
         delete_solution, get_puzzle, get_puzzles, insert_or_update_solution, insert_solution,
         update_solution,
     },
-    types::{NewPuzzle, Puzzle, PuzzleDate, PuzzleSolution, ResultPuzzle},
+    types::{Puzzle, PuzzleDate, PuzzleSolution, ResultPuzzle},
 };
+
+use std::error::Error as _;
+
+use api_framework::framework::State;
+use axum::{Extension, Json, extract::Query, http::StatusCode, response::IntoResponse};
+use chrono::Datelike;
+use serde::Deserialize;
+use tracing::{error, info};
 
 #[derive(Debug, Deserialize)]
 pub struct RandomWord {
@@ -87,7 +88,7 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
         };
 
         if let Some(puzzle) = get_puzzle(&mut conn, &date) {
-            (StatusCode::OK, Json(puzzle.to_new_puzzle())).into_response()
+            (StatusCode::OK, Json(puzzle.to_result_puzzle())).into_response()
         } else if params.generate_if_missing.unwrap_or(false) {
             let str = match fetch_random_word().await {
                 State::Success(str) => str,
@@ -102,11 +103,22 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
             };
 
             match insert_or_update_solution(&mut conn, &date, &solution) {
-                Ok(_) => (
-                    StatusCode::CREATED,
-                    Json(Puzzle::new(date, solution).to_result_puzzle()),
-                )
-                    .into_response(),
+                Ok(_) => {
+                    if date.inner().year() == 2077 {
+                        (
+                            StatusCode::CREATED,
+                            [("x-greeting", "Good morning, Night City!")],
+                            Json(Puzzle::new(date, solution).to_result_puzzle()),
+                        )
+                            .into_response()
+                    } else {
+                        (
+                            StatusCode::CREATED,
+                            Json(Puzzle::new(date, solution).to_result_puzzle()),
+                        )
+                            .into_response()
+                    }
+                }
                 Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
             }
         } else {
