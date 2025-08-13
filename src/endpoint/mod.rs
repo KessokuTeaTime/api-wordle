@@ -1,7 +1,7 @@
 //! The API endpoints.
 
 use crate::middleware::{
-    auth::layers::{admin_password_authorization, kessoku_private_ci_authorization}, authorize_paseto_token,
+    auth::{layers::{admin_password_authorization, kessoku_private_ci_authorization}, authorize_paseto_token},
     logging::log_request,
 };
 
