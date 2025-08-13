@@ -27,7 +27,7 @@ pub mod layers {
     }
 
     pub fn admin_password_authorization() -> AddAuthorizationLayer {
-        AddAuthorizationLayer::bearer(&str::from_utf8(&ADMIN_PASSWORD[..]).unwrap())
+        AddAuthorizationLayer::bearer(&hex::encode(*ADMIN_PASSWORD))
     }
 }
 

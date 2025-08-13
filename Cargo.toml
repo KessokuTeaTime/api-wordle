@@ -29,6 +29,7 @@ rusty_paseto = "0.7.2"
 axum-auth = "0.8.1"
 axum-extra = { version = "0.10.1", features = ["typed-header"] }
 sha2 = "0.10.9"
+hex = "0.4.3"
 
 [build-dependencies]
 anyhow = "1.0.98"
