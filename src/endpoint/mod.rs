@@ -26,7 +26,7 @@ pub fn route_from(app: Router) -> Router {
             .delete(root::delete),
     )
     .route("/dates", get(dates::get))
-    .route("/auth", get(auth::get).route_layer(admin_password_authorization))
+    .route("/auth", get(auth::get).route_layer(admin_password_authorization()))
     .route("/auth/test", get(auth::get).route_layer(from_fn(authorize_paseto_token)))
     .route(
         "/internal/update",
