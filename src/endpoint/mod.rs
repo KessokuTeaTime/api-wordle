@@ -27,7 +27,7 @@ pub fn route_from(mut app: Router) -> Router {
 }
 
 fn route_gets(app: Router) -> Router {
-    app.route("", get(root::get))
+    app.route("/", get(root::get))
         .route("/dates", get(dates::get))
         .route(
             "/auth",
@@ -40,16 +40,16 @@ fn route_gets(app: Router) -> Router {
 }
 
 fn route_posts(app: Router) -> Router {
-    app.route("", post(root::post)).route(
+    app.route("/", post(root::post)).route(
         "/internal/update",
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
     )
 }
 
 fn route_puts(app: Router) -> Router {
-    app.route("", put(root::put))
+    app.route("/", put(root::put))
 }
 
 fn route_deletes(app: Router) -> Router {
-    app.route("", delete(root::delete))
+    app.route("/", delete(root::delete))
 }
