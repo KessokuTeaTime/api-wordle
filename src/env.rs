@@ -3,6 +3,8 @@
 use std::{env, path::PathBuf};
 
 use api_framework::{env::parse_env, static_lazy_lock};
+use rusty_paseto::core::Key;
+use sha2::Digest;
 
 /// The info generated during build.
 pub mod info {
@@ -30,6 +32,16 @@ static_lazy_lock! {
 static_lazy_lock! {
     pub DATABASE_URL: String = env::var("DATABASE_URL").expect("DATABASE_URL not set in environment");
     "The url to connect the database."
+}
+
+static_lazy_lock! {
+    pub ADMIN_PASSWORD: [u8; 32] = parse_env!("ADMIN_PASSWORD" => |k| Ok(sha2::Sha256::digest(k.into_bytes()))).expect("ADMIN_PASSWORD not set in environment").into();
+    "The administration password. Hashed using SHA256 to generate a 32 bytes long key."
+}
+
+static_lazy_lock! {
+    pub PASETO_SYMMETRIC_KEY: [u8; 32] = parse_env!("PASETO_SYMMETRIC_KEY" => |k| Ok(sha2::Sha256::digest(k.into_bytes()))).expect("PASETO_SYMMETRIC_KEY not set in environment").into();
+    "The PASETO symmetric key. Hashed using SHA256 to generate a 32 bytes long key."
 }
 
 static_lazy_lock! {

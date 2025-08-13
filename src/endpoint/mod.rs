@@ -1,6 +1,9 @@
 //! The API endpoints.
 
-use crate::middleware::{auth::layers::kessoku_private_ci_authorization, logging::log_request};
+use crate::middleware::{
+    auth::layers::{admin_password_authorization, kessoku_private_ci_authorization},
+    logging::log_request,
+};
 
 use axum::{
     Router,
@@ -8,6 +11,7 @@ use axum::{
     routing::{get, post},
 };
 
+pub mod auth;
 pub mod dates;
 pub mod internal;
 pub mod root;
@@ -22,6 +26,10 @@ pub fn route_from(app: Router) -> Router {
             .delete(root::delete),
     )
     .route("/dates", get(dates::get))
+    .route(
+        "/auth",
+        get(auth::get).route_layer(admin_password_authorization()),
+    )
     .route(
         "/internal/update",
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
