@@ -1,11 +1,14 @@
 //! Middlewares for authorization.
 
 use axum::{
-    extract::Request,
+    extract::{FromRequestParts, Request},
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use axum_extra::{TypedHeader, headers::authorization::Bearer};
+use axum_extra::{
+    TypedHeader,
+    headers::{Authorization, authorization::Bearer},
+};
 use reqwest::StatusCode;
 use rusty_paseto::{
     core::{Key, Local, PasetoSymmetricKey, V4},
@@ -32,11 +35,11 @@ pub mod layers {
 }
 
 pub async fn generate_paseto_token() -> String {
-    let in_2_minutes = (chrono::Local::now() + chrono::Duration::minutes(2)).to_rfc3339();
+    let timeout = (chrono::Local::now() + chrono::Duration::minutes(5)).to_rfc3339();
     let key: PasetoSymmetricKey<_, _> = Key::from(*PASETO_SYMMETRIC_KEY).into();
 
     PasetoBuilder::<V4, Local>::default()
-        .set_claim(ExpirationClaim::try_from(in_2_minutes).unwrap())
+        .set_claim(ExpirationClaim::try_from(timeout).unwrap())
         .build(&key)
         .unwrap()
 }
@@ -47,17 +50,16 @@ pub async fn generate_paseto_token() -> String {
 /// 2. Client gets the encrypted token and decrypts it.
 /// 3. Client sends the decrypted token in its header to authorize.
 pub async fn authorize_paseto_token(
-    bearer: Option<TypedHeader<Bearer>>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
     request: Request,
     next: Next,
 ) -> Response {
-    let token = match bearer {
-        Some(bearer) => bearer.token().to_owned(),
-        None => return (StatusCode::UNAUTHORIZED).into_response(),
-    };
+    let token = bearer.token().to_owned();
     let key: PasetoSymmetricKey<_, _> = Key::from(*PASETO_SYMMETRIC_KEY).into();
-    match PasetoParser::<V4, Local>::new().parse(&token, &key) {
-        Ok(_) => next.run(request).await,
-        _ => (StatusCode::UNAUTHORIZED).into_response(),
-    }
+    let _json_value = match PasetoParser::<V4, Local>::new().parse(&token, &key) {
+        Ok(json_value) => json_value,
+        Err(_) => return (StatusCode::UNAUTHORIZED, "token unmatch").into_response(),
+    };
+
+    next.run(request).await
 }
