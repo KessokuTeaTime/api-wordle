@@ -13,7 +13,7 @@ use tokio::net::TcpListener;
 use tracing::{info, trace};
 
 pub mod env;
-pub mod logging;
+pub mod trace;
 
 pub mod database;
 pub mod endpoint;
@@ -25,7 +25,7 @@ mod schema;
 async fn main() {
     dotenvy::dotenv().ok();
     dotenvy::from_filename_override(format!("{}.env", clap::crate_name!())).ok();
-    logging::setup().unwrap();
+    trace::setup().unwrap();
 
     trace!("loaded environment: {:#?}", std::env::vars());
     info!(

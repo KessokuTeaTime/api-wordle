@@ -8,7 +8,7 @@ use crate::middleware::auth::{
 use axum::{
     Router,
     middleware::from_fn,
-    routing::{get, post},
+    routing::{delete, get, post, put},
 };
 use tower_http::trace::TraceLayer;
 
@@ -18,26 +18,38 @@ pub mod internal;
 pub mod root;
 
 /// Routes an [`Router`] with the endpoints defined by this module.
-pub fn route_from(app: Router) -> Router {
-    app.route(
-        "/",
-        get(root::get)
-            .post(root::post)
-            .put(root::put)
-            .delete(root::delete),
-    )
-    .route("/dates", get(dates::get))
-    .route(
-        "/auth",
-        get(auth::get).route_layer(admin_password_authorization()),
-    )
-    .route(
-        "/auth/test",
-        get(auth::get).route_layer(from_fn(authorize_paseto_token)),
-    )
-    .route(
+pub fn route_from(mut app: Router) -> Router {
+    app = route_gets(app);
+    app = route_posts(app);
+    app = route_puts(app);
+    app = route_deletes(app);
+    app.layer(TraceLayer::new_for_http())
+}
+
+fn route_gets(app: Router) -> Router {
+    app.route("", get(root::get))
+        .route("/dates", get(dates::get))
+        .route(
+            "/auth",
+            get(auth::get).route_layer(admin_password_authorization()),
+        )
+        .route(
+            "/auth/test",
+            get(auth::get).route_layer(from_fn(authorize_paseto_token)),
+        )
+}
+
+fn route_posts(app: Router) -> Router {
+    app.route("", post(root::post)).route(
         "/internal/update",
         post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
     )
-    .layer(TraceLayer::new_for_http())
+}
+
+fn route_puts(app: Router) -> Router {
+    app.route("", put(root::put))
+}
+
+fn route_deletes(app: Router) -> Router {
+    app.route("", delete(root::delete))
 }
