@@ -26,7 +26,7 @@ pub fn get_dates(conn: &mut PgConnection, includes_deleted: bool) -> Vec<PuzzleD
 pub fn get_puzzles(conn: &mut PgConnection, includes_deleted: bool) -> Vec<Puzzle> {
     use schema::puzzles::dsl::{is_deleted as d_is_deleted, puzzles};
 
-    info!("getting puzzles");
+    info!("getting puzzles…");
     let query = if includes_deleted {
         puzzles.into_boxed()
     } else {
