@@ -1,7 +1,7 @@
 //! The API endpoints.
 
 use crate::middleware::{
-    auth::layers::{admin_password_authorization, kessoku_private_ci_authorization},
+    auth::layers::{admin_password_authorization, kessoku_private_ci_authorization, authorize_paseto_token},
     logging::log_request,
 };
 
@@ -26,10 +26,11 @@ pub fn route_from(app: Router) -> Router {
             .delete(root::delete),
     )
     .route("/dates", get(dates::get))
-    .route("/auth", get(auth::get))
+    .route("/auth", get(auth::get).route_layer(admin_password_authorization))
+    .route("/auth/test", get(auth::get).route_layer())
     .route(
         "/internal/update",
-        post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
+        post(internal::update::post).route_layer(kessoku_private_ci_authorization(authorize_paseto_token)),
     )
     .layer(from_fn(log_request))
 }
