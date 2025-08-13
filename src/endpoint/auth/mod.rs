@@ -2,7 +2,7 @@
 
 use axum::{
     http::{StatusCode, header},
-    request::Request,
+    extract::Request,
     response::IntoResponse,
 };
 
