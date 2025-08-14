@@ -1,10 +1,10 @@
 //! Endpoint `/validate`.
 
+use crate::WORDS;
+
 use axum::{extract::Query, http::StatusCode, response::IntoResponse};
 use serde::Deserialize;
 use tracing::info;
-
-use crate::database::puzzles::WORDS;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Params {

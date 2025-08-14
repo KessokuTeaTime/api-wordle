@@ -17,7 +17,7 @@ pub mod env;
 pub mod trace;
 
 pub mod database;
-// pub mod endpoint;
+pub mod endpoint;
 pub mod middleware;
 
 static_lazy_lock! {
@@ -48,7 +48,7 @@ async fn main() {
 
 async fn serve() -> Result<(), Error> {
     let mut app = Router::new();
-    // app = endpoint::route_from(app);
+    app = endpoint::route_from(app);
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", *PORT)).await?;
 

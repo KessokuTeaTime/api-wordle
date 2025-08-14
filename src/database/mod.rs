@@ -22,6 +22,31 @@ static_lazy_lock! {
     "The connect options for PostgreSQL."
 }
 
+#[macro_export]
+macro_rules! acquire_or {
+    (|$name:ident| $expr:expr) => {
+        match $crate::database::acquire().await {
+            Ok(db) => db,
+            Err($name) => $expr,
+        };
+    };
+}
+
+pub use acquire_or;
+
+#[macro_export]
+macro_rules! acquire_or_response {
+    () => {
+        $crate::database::acquire_or!(|err| return (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            err.to_string()
+        )
+            .into_response())
+    };
+}
+
+pub use acquire_or_response;
+
 pub async fn setup() -> Result<(), DbErr> {
     let db = acquire().await?;
     Migrator::up(&db, None).await

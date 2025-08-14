@@ -3,10 +3,11 @@
 use std::fmt::Display;
 
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{PuzzleDate, PuzzleSolution};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, DeriveEntityModel)]
 #[sea_orm(table_name = "puzzles")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -24,6 +25,30 @@ impl Display for Model {
             self.date,
             if self.is_deleted { '-' } else { '+' }
         )
+    }
+}
+
+impl Model {
+    pub fn to_result_puzzle(self) -> ResultPuzzle {
+        self.into()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResultPuzzle {
+    pub date: PuzzleDate,
+    pub solution: PuzzleSolution,
+}
+
+impl Display for ResultPuzzle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} [{}]", self.solution, self.date)
+    }
+}
+
+impl From<Model> for ResultPuzzle {
+    fn from(Model { date, solution, .. }: Model) -> Self {
+        Self { date, solution }
     }
 }
 
