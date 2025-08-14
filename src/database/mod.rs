@@ -5,20 +5,18 @@ use crate::env::DATABASE_URL;
 use api_framework::static_lazy_lock;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
-use tracing::level_filters::LevelFilter;
+use tracing::log::LevelFilter;
 
-pub mod types;
-
-pub mod puzzles;
+pub mod tables;
 
 static_lazy_lock! {
     pub OPTIONS: ConnectOptions = {
-        let mut options = ConnectOptions::new(*DATABASE_URL);
+        let mut options = ConnectOptions::new(&*DATABASE_URL);
         options.max_connections(100)
             .connect_timeout(Duration::from_secs(10))
             .idle_timeout(Duration::from_secs(5))
             .sqlx_logging(true)
-            .sqlx_logging_level(LevelFilter::TRACE);
+            .sqlx_logging_level(LevelFilter::Trace);
         options
     };
     "The connect options for PostgreSQL."
@@ -30,5 +28,5 @@ pub async fn setup() -> Result<(), DbErr> {
 }
 
 pub async fn acquire() -> Result<DatabaseConnection, DbErr> {
-    Database::connect(OPTIONS).await
+    Database::connect(OPTIONS.clone()).await
 }

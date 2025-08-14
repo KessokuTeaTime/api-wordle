@@ -8,7 +8,7 @@ use crate::env::{
 use std::net::SocketAddr;
 
 use anyhow::{Error, anyhow};
-use api_framework::shutdown;
+use api_framework::{shutdown, static_lazy_lock};
 use axum::Router;
 use tokio::net::TcpListener;
 use tracing::{info, trace};
@@ -19,6 +19,10 @@ pub mod trace;
 pub mod database;
 // pub mod endpoint;
 pub mod middleware;
+
+static_lazy_lock! {
+    pub WORDS: &[&str] = random_word::all_len(5, random_word::Lang::En).unwrap();
+}
 
 #[tokio::main]
 async fn main() {
