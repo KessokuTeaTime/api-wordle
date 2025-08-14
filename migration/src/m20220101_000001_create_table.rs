@@ -42,6 +42,7 @@ impl MigrationTrait for Migration {
                     .col(string(Histories::Session))
                     .col(string(Histories::History))
                     .col(date_time(Histories::UploadDate))
+                    .primary_key(Index::create().col(Histories::Date).col(Histories::Session))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_puzzle_date")
@@ -66,9 +67,9 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // `puzzles`
+        // `histories`
         manager
-            .drop_table(Table::drop().table(Puzzles::Table).to_owned())
+            .drop_table(Table::drop().table(Histories::Table).to_owned())
             .await?;
 
         // `sessions`
@@ -76,9 +77,9 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Sessions::Table).to_owned())
             .await?;
 
-        // `histories`
+        // `puzzles`
         manager
-            .drop_table(Table::drop().table(Histories::Table).to_owned())
+            .drop_table(Table::drop().table(Puzzles::Table).to_owned())
             .await?;
 
         Ok(())
