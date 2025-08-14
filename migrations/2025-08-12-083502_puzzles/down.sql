@@ -1,1 +1,1 @@
-DROP TABLE puzzles
+DROP TABLE puzzles;

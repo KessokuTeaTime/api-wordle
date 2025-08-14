@@ -6,4 +6,6 @@ diesel::table! {
         solution -> Text,
         is_deleted -> Bool,
     }
+
+
 }
