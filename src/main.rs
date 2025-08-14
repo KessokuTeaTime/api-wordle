@@ -21,12 +21,12 @@ pub mod database;
 pub mod middleware;
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
-    env::setup()?;
-    trace::setup()?;
+async fn main() {
+    env::setup().unwrap();
+    trace::setup().unwrap();
     trace!("loaded environment: {:#?}", std::env::vars());
 
-    database::setup()?;
+    database::setup().await.unwrap();
     trace!("set up database at {}", *DATABASE_URL);
 
     info!(

@@ -2,12 +2,14 @@
 
 use sea_orm::entity::prelude::*;
 
+use crate::{PuzzleDate, PuzzleSolution};
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "puzzles")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub date: Date,
-    pub solution: String,
+    pub date: PuzzleDate,
+    pub solution: PuzzleSolution,
     pub is_deleted: bool,
 }
 

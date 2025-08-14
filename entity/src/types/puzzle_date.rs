@@ -1,17 +1,16 @@
-use chrono::NaiveDate;
-use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{self, Display},
-    io::Write as _,
-};
+use std::fmt::{self, Display};
 
-pub struct PuzzleDate(NaiveDate);
+use sea_orm::{DeriveValueType, TryFromU64, prelude::Date};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, DeriveValueType)]
+pub struct PuzzleDate(Date);
 
 impl PuzzleDate {
-    const MIN_DATE: NaiveDate = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+    const MIN_DATE: Date = Date::from_ymd_opt(1970, 1, 1).unwrap();
 
     pub fn new(date_str: &str) -> Result<Self, PuzzleDateError> {
-        let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+        let date = Date::parse_from_str(date_str, "%Y-%m-%d")
             .map_err(|_| PuzzleDateError::InvalidFormat)?;
 
         if date >= Self::MIN_DATE {
@@ -21,7 +20,7 @@ impl PuzzleDate {
         }
     }
 
-    pub fn inner(&self) -> NaiveDate {
+    pub fn inner(&self) -> Date {
         self.0
     }
 }
@@ -29,6 +28,12 @@ impl PuzzleDate {
 impl Display for PuzzleDate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.format("%Y-%m-%d"))
+    }
+}
+
+impl TryFromU64 for PuzzleDate {
+    fn try_from_u64(n: u64) -> Result<Self, sea_orm::DbErr> {
+        Ok(Self(Date::try_from_u64(n)?))
     }
 }
 
@@ -48,24 +53,3 @@ impl Display for PuzzleDateError {
 }
 
 impl std::error::Error for PuzzleDateError {}
-
-impl ToSql<Text, Pg> for PuzzleDate
-where
-    String: ToSql<Text, Pg>,
-{
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        out.write_all(self.to_string().as_bytes())?;
-        Ok(serialize::IsNull::No)
-    }
-}
-
-impl<DB> FromSql<Text, DB> for PuzzleDate
-where
-    DB: Backend,
-    String: FromSql<Text, DB>,
-{
-    fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
-        let s = String::from_sql(bytes)?;
-        PuzzleDate::new(&s).map_err(|e| Box::from(format!("invalid date {s}: {e}")))
-    }
-}
