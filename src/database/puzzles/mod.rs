@@ -2,8 +2,13 @@ use crate::{database::types::Puzzle, schema};
 
 use super::types::{PuzzleDate, PuzzleSolution};
 
+use api_framework::static_lazy_lock;
 use diesel::{PgConnection, QueryDsl, RunQueryDsl, prelude::*};
 use tracing::{error, info, trace, warn};
+
+static_lazy_lock! {
+    pub WORDS: &[&str] = random_word::all_len(5, random_word::Lang::En).unwrap();
+}
 
 pub fn get_dates(conn: &mut PgConnection, includes_deleted: bool) -> Vec<PuzzleDate> {
     use schema::puzzles::dsl::{date as d_date, is_deleted as d_is_deleted, puzzles};

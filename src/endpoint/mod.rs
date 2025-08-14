@@ -16,6 +16,7 @@ pub mod auth;
 pub mod dates;
 pub mod internal;
 pub mod root;
+pub mod validate;
 
 /// Routes an [`Router`] with the endpoints defined by this module.
 pub fn route_from(mut app: Router) -> Router {
@@ -29,6 +30,7 @@ pub fn route_from(mut app: Router) -> Router {
 fn route_gets(app: Router) -> Router {
     app.route("/", get(root::get))
         .route("/dates", get(dates::get))
+        .route("/validate", get(validate::get))
         .route(
             "/auth",
             get(auth::get).route_layer(admin_password_authorization()),
