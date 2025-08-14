@@ -1,7 +1,6 @@
 //! Endpoint root.
 
 use crate::database::{
-    POOL,
     puzzles::{
         WORDS, delete_solution, get_puzzle, get_puzzles, insert_or_update_solution,
         insert_solution, update_solution,
@@ -9,7 +8,6 @@ use crate::database::{
     types::{Puzzle, PuzzleDate, PuzzleSolution, ResultPuzzle},
 };
 
-use api_framework::framework::State;
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
 use chrono::Datelike;
 use serde::Deserialize;

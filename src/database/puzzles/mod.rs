@@ -1,9 +1,8 @@
-use crate::{database::types::Puzzle, schema};
+use crate::database::types::Puzzle;
 
 use super::types::{PuzzleDate, PuzzleSolution};
 
 use api_framework::static_lazy_lock;
-use diesel::{PgConnection, QueryDsl, RunQueryDsl, prelude::*};
 use tracing::{error, info, trace, warn};
 
 static_lazy_lock! {

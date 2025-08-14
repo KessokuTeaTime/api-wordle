@@ -1,46 +1,34 @@
+use std::time::Duration;
+
 use crate::env::DATABASE_URL;
 
 use api_framework::static_lazy_lock;
-use diesel::{PgConnection, r2d2::ConnectionManager};
-use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use tracing::info;
+use migration::{Migrator, MigratorTrait};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
+use tracing::level_filters::LevelFilter;
 
 pub mod types;
 
 pub mod puzzles;
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
-
 static_lazy_lock! {
-    pub POOL: Pool = establish_pool();
-    "The connection pool for PostgreSQL."
+    pub OPTIONS: ConnectOptions = {
+        let mut options = ConnectOptions::new(*DATABASE_URL);
+        options.max_connections(100)
+            .connect_timeout(Duration::from_secs(10))
+            .idle_timeout(Duration::from_secs(5))
+            .sqlx_logging(true)
+            .sqlx_logging_level(LevelFilter::TRACE);
+        options
+    };
+    "The connect options for PostgreSQL."
 }
 
-pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
-
-fn establish_pool() -> Pool {
-    info!("establishing connection pool with {}…", *DATABASE_URL);
-    let manager = ConnectionManager::<PgConnection>::new(&*DATABASE_URL);
-    let pool = Pool::builder()
-        .max_size(15)
-        .build(manager)
-        .unwrap_or_else(|e| {
-            panic!(
-                "failed to establish connection pool with {}: {e}",
-                *DATABASE_URL
-            )
-        });
-
-    info!("established connection pool with {}", *DATABASE_URL);
-    pool
+pub async fn setup() -> Result<(), DbErr> {
+    let db = acquire().await?;
+    Migrator::up(&db, None).await
 }
 
-pub fn run_migrations() {
-    info!("running database migrations…");
-    let mut conn = POOL
-        .get()
-        .unwrap_or_else(|e| panic!("failed to get connection: {e}"));
-
-    conn.run_pending_migrations(MIGRATIONS)
-        .unwrap_or_else(|e| panic!("failed to run migrations: {e}"));
+pub async fn acquire() -> Result<DatabaseConnection, DbErr> {
+    Database::connect(OPTIONS).await
 }

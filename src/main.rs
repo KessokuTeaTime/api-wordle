@@ -1,12 +1,13 @@
 //! KessokuTeaTime API backend for the wordle game.
 
 use crate::env::{
-    PORT,
+    DATABASE_URL, PORT,
     info::{BUILD_TIMESTAMP, GIT_HASH},
 };
 
 use std::net::SocketAddr;
 
+use anyhow::{Error, anyhow};
 use api_framework::shutdown;
 use axum::Router;
 use tokio::net::TcpListener;
@@ -16,34 +17,36 @@ pub mod env;
 pub mod trace;
 
 pub mod database;
-pub mod endpoint;
+// pub mod endpoint;
 pub mod middleware;
 
-mod schema;
-
 #[tokio::main]
-async fn main() {
-    dotenvy::dotenv().ok();
-    dotenvy::from_filename_override(format!("{}.env", clap::crate_name!())).ok();
-    trace::setup().unwrap();
-
+async fn main() -> Result<(), Error> {
+    env::setup()?;
+    trace::setup()?;
     trace!("loaded environment: {:#?}", std::env::vars());
+
+    database::setup()?;
+    trace!("set up database at {}", *DATABASE_URL);
+
     info!(
         "binary {} version {}",
         clap::crate_name!(),
         clap::crate_version!()
     );
     info!("compiled from commit {GIT_HASH} at {BUILD_TIMESTAMP}");
-
-    database::run_migrations();
     info!("starting server on port {}…", *PORT);
 
-    let mut app = Router::new();
-    app = endpoint::route_from(app);
+    serve().await.unwrap();
 
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", *PORT))
-        .await
-        .unwrap();
+    info!("stopping…");
+}
+
+async fn serve() -> Result<(), Error> {
+    let mut app = Router::new();
+    // app = endpoint::route_from(app);
+
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", *PORT)).await?;
 
     axum::serve(
         listener,
@@ -51,7 +54,5 @@ async fn main() {
     )
     .with_graceful_shutdown(shutdown::signal())
     .await
-    .unwrap();
-
-    info!("stopping!");
+    .map_err(|e| anyhow!(e))
 }

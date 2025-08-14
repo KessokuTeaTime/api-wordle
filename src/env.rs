@@ -2,9 +2,15 @@
 
 use std::{env, path::PathBuf};
 
+use anyhow::Error;
 use api_framework::{env::parse_env, static_lazy_lock};
-use rusty_paseto::core::Key;
 use sha2::Digest;
+
+pub fn setup() -> Result<(), Error> {
+    dotenvy::dotenv().ok();
+    dotenvy::from_filename_override(format!("{}.env", clap::crate_name!())).ok();
+    Ok(())
+}
 
 /// The info generated during build.
 pub mod info {

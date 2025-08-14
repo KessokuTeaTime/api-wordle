@@ -5,29 +5,6 @@ use std::{
     io::Write as _,
 };
 
-use diesel::{
-    backend::Backend,
-    deserialize::{self, FromSql, FromSqlRow},
-    expression::AsExpression,
-    pg::Pg,
-    serialize::{self, Output, ToSql},
-    sql_types::{SqlType, Text},
-};
-
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Serialize,
-    Deserialize,
-    SqlType,
-    AsExpression,
-    FromSqlRow,
-)]
-#[diesel(sql_type = Text)]
 pub struct PuzzleDate(NaiveDate);
 
 impl PuzzleDate {

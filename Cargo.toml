@@ -5,6 +5,8 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
+entity = { path = "entity" }
+migration = { path = "migration" }
 api-framework = { git = "https://github.com/KessokuTeaTime/api-framework" }
 anyhow = "1.0.98"
 axum = "0.8.4"
@@ -28,10 +30,21 @@ axum-extra = { version = "0.10.1", features = ["typed-header"] }
 sha2 = "0.10.9"
 hex = "0.4.3"
 random_word = { version = "0.5.0", features = ["en"] }
+sea-orm = { version = "1.1.14", features = [
+    "sqlx-postgres",
+    "runtime-tokio-native-tls",
+    "macros",
+    "mock",
+    "with-chrono",
+    "with-json",
+] }
 
 [build-dependencies]
 anyhow = "1.0.98"
 vergen = { version = "9.0.6", features = ["build", "cargo", "rustc", "si"] }
+
+[workspace]
+members = [".", "entity", "migration"]
 
 [workspace.lints.rust]
 missing-docs = "warn"
