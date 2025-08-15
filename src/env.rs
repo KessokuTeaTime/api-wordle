@@ -2,14 +2,13 @@
 
 use std::{env, path::PathBuf};
 
-use anyhow::Error;
 use api_framework::{env::parse_env, static_lazy_lock};
 use sha2::Digest;
 
-pub fn setup() -> Result<(), Error> {
+/// Sets up environment variables from `.env` and `{crate_name}.env`.
+pub fn setup() {
     dotenvy::dotenv().ok();
     dotenvy::from_filename_override(format!("{}.env", clap::crate_name!())).ok();
-    Ok(())
 }
 
 /// The info generated during build.

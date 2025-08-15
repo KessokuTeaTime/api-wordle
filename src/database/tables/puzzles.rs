@@ -1,5 +1,7 @@
-use entity::puzzles::{Entity as Puzzles, Model as Puzzle};
-use entity::{PuzzleDate, PuzzleSolution};
+//! Table `puzzles`.
+
+use entity::puzzles::Model as Puzzle;
+use entity::{PuzzleDate, PuzzleSolution, prelude::*};
 use migration::OnConflict;
 use sea_orm::{
     ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter,

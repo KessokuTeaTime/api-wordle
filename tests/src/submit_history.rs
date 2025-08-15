@@ -1,8 +1,7 @@
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use entity::{
-    Matched, PuzzleDate, PuzzleSolution, SubmitLetter, SubmitWord,
-    histories::{self, Entity as Histories},
-    puzzles, sessions,
+    Matched, PuzzleDate, PuzzleSolution, SubmitLetter, SubmitWord, histories, prelude::*, puzzles,
+    sessions,
 };
 use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, TransactionTrait};
 

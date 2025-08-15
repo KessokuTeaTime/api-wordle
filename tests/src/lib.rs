@@ -1,3 +1,5 @@
+//! Tests for entities.
+
 #![cfg(test)]
 
 use std::env;

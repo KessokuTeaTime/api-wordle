@@ -32,11 +32,19 @@ pub mod layers {
         AddAuthorizationLayer::basic(&KTT_API_USERNAME, &KTT_API_PASSWORD)
     }
 
+    /// The layer that authorizes requests with the hashed admin password.
     pub fn admin_password_authorization() -> AddAuthorizationLayer {
         AddAuthorizationLayer::bearer(&hex::encode(*ADMIN_PASSWORD))
     }
 }
 
+/// Generates a local, symmetric PASETO token with a default expiration.
+///
+/// # Panics
+///
+/// Panics if unable to generate a PASETO token.
+///
+/// See: [`PASETO_SYMMETRIC_KEY`]
 pub async fn generate_paseto_token() -> String {
     info!("generating PASETO token…");
     let timeout = (chrono::Local::now() + chrono::Duration::minutes(5)).to_rfc3339();
@@ -48,6 +56,9 @@ pub async fn generate_paseto_token() -> String {
         .unwrap()
 }
 
+/// Authorizes the PASETO token.
+///
+/// See: [`generate_paseto_token`]
 pub async fn authorize_paseto_token(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,

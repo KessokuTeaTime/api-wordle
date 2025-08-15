@@ -21,12 +21,12 @@ pub mod endpoint;
 pub mod middleware;
 
 static_lazy_lock! {
-    pub WORDS: &[&str] = random_word::all_len(5, random_word::Lang::En).unwrap();
+    WORDS: &[&str] = random_word::all_len(5, random_word::Lang::En).unwrap();
 }
 
 #[tokio::main]
 async fn main() {
-    env::setup().unwrap();
+    env::setup();
     trace::setup().unwrap();
     trace!("loaded environment: {:#?}", std::env::vars());
 

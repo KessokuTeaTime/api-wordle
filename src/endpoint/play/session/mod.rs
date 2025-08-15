@@ -1,4 +1,4 @@
-//! Endpoint: `/play/session`.
+//! Endpoint `/play/session`.
 
 use crate::middleware::session::generate_session_token;
 

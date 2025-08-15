@@ -18,9 +18,17 @@ use rusty_paseto::{
 };
 use tracing::info;
 
+/// The session token to inject as an extension.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionToken(String);
 
+/// Generates a local, symmetric session token.
+///
+/// # Panics
+///
+/// Panics if unable to generate a session token.
+///
+/// See: [`SESSION_SYMMETRIC_KEY`]
 pub async fn generate_session_token() -> String {
     info!("generating session token…");
     let key: PasetoSymmetricKey<_, _> = Key::from(*SESSION_SYMMETRIC_KEY).into();
@@ -31,6 +39,7 @@ pub async fn generate_session_token() -> String {
         .unwrap()
 }
 
+/// Validates the session token.
 pub async fn validate_session_token(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     jar: CookieJar,
