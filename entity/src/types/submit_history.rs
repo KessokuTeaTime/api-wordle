@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::SubmitWord;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubmitHistory<const N: usize>(pub Vec<SubmitWord<N>>);
 
 impl<const N: usize> SubmitHistory<N> {

@@ -3,17 +3,17 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{PuzzleSolution, SubmitHistory};
+use crate::{PuzzleDate, PuzzleSolution, SubmitHistory};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, DeriveEntityModel)]
 #[sea_orm(table_name = "histories")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub date: Date,
+    pub date: PuzzleDate,
     #[sea_orm(primary_key, auto_increment = false)]
     pub session: String,
     #[sea_orm(column_type = "JsonBinary", nullable)]
-    pub history: Option<SubmitHistory<5>>,
+    pub submit_history: Option<SubmitHistory<5>>,
     pub original_solution: PuzzleSolution,
     pub is_dirty: bool,
     pub uploaded_at: DateTime,
