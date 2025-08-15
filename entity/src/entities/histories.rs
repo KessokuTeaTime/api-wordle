@@ -13,7 +13,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub session: String,
     #[sea_orm(column_type = "JsonBinary", nullable)]
-    pub submit_history: Option<SubmitHistory<5>>,
+    pub submit_history: Option<SubmitHistory<5, 6>>,
     pub original_solution: PuzzleSolution,
     pub is_dirty: bool,
     pub uploaded_at: DateTime,

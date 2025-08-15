@@ -3,22 +3,10 @@ use std::fmt::{self, Display};
 use sea_orm::DeriveValueType;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, DeriveValueType)]
-pub struct PuzzleSolution(String);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, DeriveValueType)]
+pub struct PuzzleSolution(pub String);
 
 impl PuzzleSolution {
-    pub fn new(str: &str) -> Result<Self, PuzzleWordError> {
-        if str.len() != 5 {
-            return Err(PuzzleWordError::TooFewOrTooManyLetters(str.len()));
-        }
-
-        if str.chars().all(|c| c.is_ascii_alphabetic()) {
-            Ok(Self(str.to_lowercase().to_owned()))
-        } else {
-            Err(PuzzleWordError::ContainsNonAsciiAlphabeticLetters)
-        }
-    }
-
     pub fn inner(&self) -> &str {
         &self.0
     }
@@ -27,6 +15,22 @@ impl PuzzleSolution {
 impl Display for PuzzleSolution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl TryFrom<&str> for PuzzleSolution {
+    type Error = PuzzleWordError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.len() != 5 {
+            return Err(PuzzleWordError::TooFewOrTooManyLetters(value.len()));
+        }
+
+        if value.chars().all(|c| c.is_ascii_alphabetic()) {
+            Ok(Self(value.to_lowercase().to_owned()))
+        } else {
+            Err(PuzzleWordError::ContainsNonAsciiAlphabeticLetters)
+        }
     }
 }
 

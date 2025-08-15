@@ -3,21 +3,15 @@ use std::fmt::{self, Display};
 use sea_orm::{DeriveValueType, TryFromU64, prelude::Date};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, DeriveValueType)]
-pub struct PuzzleDate(Date);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, DeriveValueType)]
+pub struct PuzzleDate(pub Date);
 
 impl PuzzleDate {
-    const MIN_DATE: Date = Date::from_ymd_opt(1970, 1, 1).unwrap();
+    pub const MIN_DATE: Date = Date::from_ymd_opt(1970, 1, 1).unwrap();
+    pub const MIN: Self = Self(Self::MIN_DATE);
 
-    pub fn new(date_str: &str) -> Result<Self, PuzzleDateError> {
-        let date = Date::parse_from_str(date_str, "%Y-%m-%d")
-            .map_err(|_| PuzzleDateError::InvalidFormat)?;
-
-        if date >= Self::MIN_DATE {
-            Ok(Self(date))
-        } else {
-            Err(PuzzleDateError::TooEarly)
-        }
+    pub fn new(date: Date) -> Self {
+        Self(date)
     }
 
     pub fn inner(&self) -> Date {
@@ -28,6 +22,21 @@ impl PuzzleDate {
 impl Display for PuzzleDate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.format("%Y-%m-%d"))
+    }
+}
+
+impl TryFrom<&str> for PuzzleDate {
+    type Error = PuzzleDateError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let date =
+            Date::parse_from_str(value, "%Y-%m-%d").map_err(|_| PuzzleDateError::InvalidFormat)?;
+
+        if date >= Self::MIN_DATE {
+            Ok(Self(date))
+        } else {
+            Err(PuzzleDateError::TooEarly)
+        }
     }
 }
 

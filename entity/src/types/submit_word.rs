@@ -22,6 +22,10 @@ impl<const N: usize> SubmitWord<N> {
         N
     }
 
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
     pub fn to_vec(&self) -> Vec<&SubmitLetter> {
         self.0.iter().collect()
     }

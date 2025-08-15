@@ -12,8 +12,8 @@ async fn test() {
     let tran = db.begin().await.unwrap();
     seed_data(&db).await;
 
-    let date = PuzzleDate::new("1970-01-01").unwrap();
-    let solution = PuzzleSolution::new("rusty").unwrap();
+    let date = PuzzleDate::try_from("1970-01-01").unwrap();
+    let solution = PuzzleSolution::try_from("rusty").unwrap();
     let session = "session".to_owned();
 
     let history = Histories::find_by_id((date.clone(), session.clone()))
@@ -28,13 +28,15 @@ async fn test() {
     assert!(!history.is_dirty);
 
     let mut submit_history = history.submit_history.unwrap_or_default();
-    submit_history.submit(SubmitWord::new([
-        SubmitLetter::new('R', Matched::Yes),
-        SubmitLetter::new('U', Matched::No),
-        SubmitLetter::new('S', Matched::Partially),
-        SubmitLetter::new('T', Matched::Yes),
-        SubmitLetter::new('Y', Matched::Partially),
-    ]));
+    submit_history
+        .submit(SubmitWord::new([
+            SubmitLetter::new('R', Matched::Yes),
+            SubmitLetter::new('U', Matched::No),
+            SubmitLetter::new('S', Matched::Partially),
+            SubmitLetter::new('T', Matched::Yes),
+            SubmitLetter::new('Y', Matched::Partially),
+        ]))
+        .unwrap();
 
     let active_history = histories::ActiveModel {
         date: ActiveValue::Unchanged(date),
@@ -48,8 +50,8 @@ async fn test() {
 }
 
 async fn seed_data(db: &DatabaseConnection) {
-    let date = PuzzleDate::new("1970-01-01").unwrap();
-    let solution = PuzzleSolution::new("rusty").unwrap();
+    let date = PuzzleDate::try_from("1970-01-01").unwrap();
+    let solution = PuzzleSolution::try_from("rusty").unwrap();
     let session = "session".to_owned();
     let date_time = NaiveDateTime::new(
         NaiveDate::from_ymd_opt(1970, 1, 1).unwrap(),
