@@ -22,9 +22,9 @@ async fn test() {
         .unwrap()
         .unwrap();
 
-    assert!(history.date == date);
-    assert!(history.session == session);
-    assert!(history.original_solution == solution);
+    assert_eq!(history.date, date);
+    assert_eq!(history.session, session);
+    assert_eq!(history.original_solution, solution);
     assert!(!history.is_dirty);
 
     let mut submit_history = history.submit_history.unwrap_or_default();

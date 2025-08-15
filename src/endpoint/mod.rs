@@ -15,6 +15,7 @@ use tower_http::trace::TraceLayer;
 pub mod auth;
 pub mod dates;
 pub mod internal;
+pub mod play;
 pub mod root;
 pub mod validate;
 
@@ -34,6 +35,10 @@ fn route_gets(app: Router) -> Router {
         .route(
             "/auth",
             get(auth::get).route_layer(admin_password_authorization()),
+        )
+        .route(
+            "/auth/validate",
+            get(auth::validate::get).route_layer(from_fn(authorize_paseto_token)),
         )
 }
 

@@ -22,7 +22,7 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
     let db = database::acquire_or_response!();
 
     if let Some(date) = params.date {
-        let date = match PuzzleDate::new(&date) {
+        let date = match PuzzleDate::try_from(&date[..]) {
             Ok(date) => date,
             Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
         };
@@ -31,7 +31,7 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
             (StatusCode::OK, Json(puzzle.to_result_puzzle())).into_response()
         } else if params.generate_if_missing.unwrap_or(false) {
             let str = random_word::get_len(5, random_word::Lang::En).unwrap();
-            let solution = match PuzzleSolution::new(str) {
+            let solution = match PuzzleSolution::try_from(str) {
                 Ok(solution) => solution,
                 Err(err) => {
                     return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
@@ -84,8 +84,8 @@ pub async fn post(
     let db = database::acquire_or_response!();
 
     let (date, solution) = match (
-        PuzzleDate::new(&payload.date),
-        PuzzleSolution::new(&payload.solution),
+        PuzzleDate::try_from(&payload.date[..]),
+        PuzzleSolution::try_from(&payload.solution[..]),
     ) {
         (Ok(date), Ok(solution)) => (date, solution),
         _ => return (StatusCode::BAD_REQUEST).into_response(),
@@ -113,8 +113,8 @@ pub async fn put(Json(payload): Json<PutPayload>) -> impl IntoResponse {
     let db = database::acquire_or_response!();
 
     let (date, solution) = match (
-        PuzzleDate::new(&payload.date),
-        PuzzleSolution::new(&payload.solution),
+        PuzzleDate::try_from(&payload.date[..]),
+        PuzzleSolution::try_from(&payload.solution[..]),
     ) {
         (Ok(date), Ok(solution)) => (date, solution),
         _ => return (StatusCode::BAD_REQUEST).into_response(),
@@ -134,7 +134,7 @@ pub struct DeleteParams {
 pub async fn delete(Query(params): Query<DeleteParams>) -> impl IntoResponse {
     let db = database::acquire_or_response!();
 
-    let date = match PuzzleDate::new(&params.date) {
+    let date = match PuzzleDate::try_from(&params.date[..]) {
         Ok(date) => date,
         Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
     };
