@@ -40,7 +40,9 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(date(Histories::Date))
                     .col(string(Histories::Session))
-                    .col(string(Histories::History))
+                    .col(json_binary_null(Histories::History))
+                    .col(string(Histories::OriginalSolution))
+                    .col(boolean(Histories::IsDirty))
                     .col(date_time(Histories::UploadDate))
                     .primary_key(Index::create().col(Histories::Date).col(Histories::Session))
                     .foreign_key(
@@ -110,6 +112,8 @@ enum Histories {
     Date,
     Session,
     History,
+    OriginalSolution,
+    IsDirty,
     #[sea_orm(iden = "uploaded_at")]
     UploadDate,
 }

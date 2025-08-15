@@ -5,11 +5,11 @@ use std::fmt::Display;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{SeqAccess, Visitor},
-    ser::{SerializeSeq, SerializeStruct},
+    ser::SerializeSeq,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SubmitWord<const N: usize>([SubmitLetter; N]);
+pub struct SubmitWord<const N: usize>(pub [SubmitLetter; N]);
 
 impl<const N: usize> SubmitWord<N> {
     pub const SEPARATOR: &str = ",";
@@ -80,7 +80,11 @@ impl<'de, const N: usize> Visitor<'de> for SubmitWordVisitor<N> {
         match &letters[..].try_into() {
             Ok(letters) => Ok(Self::Value::new(*letters)),
             Err(err) => Err(serde::de::Error::custom(format!(
-                "value must contain exactly {N} elements: {letters:?}, {err}"
+                "value must contain exactly {}: {letters:?}, {err}",
+                match N {
+                    1 => "1 element",
+                    n => &format!("{n} elements"),
+                }
             ))),
         }
     }
@@ -103,11 +107,13 @@ fn test_serde() {
     fn get_letter_tokens(letter: &SubmitLetter) -> Vec<Token> {
         vec![
             Token::TupleStruct {
-                name: "SubmitLetter",
+                name: stringify!(SubmitLetter),
                 len: 2,
             },
             Token::Char(letter.inner()),
-            Token::Enum { name: "Matched" },
+            Token::Enum {
+                name: stringify!(Matched),
+            },
             Token::Str(letter.matched().to_str()),
             Token::Unit,
             Token::TupleStructEnd,

@@ -5,7 +5,7 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SubmitLetter(char, Matched);
+pub struct SubmitLetter(pub char, pub Matched);
 
 impl SubmitLetter {
     pub fn new(c: char, matched: Matched) -> Self {
