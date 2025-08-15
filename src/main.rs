@@ -60,3 +60,7 @@ async fn serve() -> Result<(), Error> {
     .await
     .map_err(|e| anyhow!(e))
 }
+
+mod cookies {
+    pub const SESSION_TOKEN: &str = "session_token";
+}

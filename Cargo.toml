@@ -26,7 +26,7 @@ reqwest = { version = "0.12.22", features = ["json", "blocking", "stream"] }
 serde_json = "1.0.142"
 rusty_paseto = "0.7.2"
 axum-auth = "0.8.1"
-axum-extra = { version = "0.10.1", features = ["typed-header"] }
+axum-extra = { version = "0.10.1", features = ["typed-header", "cookie"] }
 sha2 = "0.10.9"
 hex = "0.4.3"
 random_word = { version = "0.5.0", features = ["en"] }

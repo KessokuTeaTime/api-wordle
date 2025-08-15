@@ -51,6 +51,11 @@ static_lazy_lock! {
 }
 
 static_lazy_lock! {
+    pub SESSION_SYMMETRIC_KEY: [u8; 32] = parse_env!("SESSION_SYMMETRIC_KEY" => |k| Ok(sha2::Sha256::digest(k.into_bytes()))).expect("SESSION_SYMMETRIC_KEY not set in environment").into();
+    "The session symmetric key. Hashed using SHA256 to generate a 32 bytes long key."
+}
+
+static_lazy_lock! {
     pub TRACING_MAX_FILES: usize = parse_env!("TRACING_MAX_FILES" => |s| s.parse::<usize>(); anyhow).unwrap_or(5);
     "The maximum file count to use for tracing."
 }

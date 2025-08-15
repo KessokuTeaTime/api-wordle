@@ -1,9 +1,11 @@
-//! Middlewares for authorization.
+//! Middleware for authorization.
+
+use crate::env::PASETO_SYMMETRIC_KEY;
 
 use std::net::SocketAddr;
 
 use axum::{
-    extract::{ConnectInfo, FromRequestParts, Request},
+    extract::{ConnectInfo, Request},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -17,8 +19,6 @@ use rusty_paseto::{
     prelude::{ExpirationClaim, PasetoBuilder, PasetoParser},
 };
 use tracing::info;
-
-use crate::env::PASETO_SYMMETRIC_KEY;
 
 /// Router layers for authorization.
 pub mod layers {
@@ -48,11 +48,6 @@ pub async fn generate_paseto_token() -> String {
         .unwrap()
 }
 
-/// Authorizes the request with PASETO.
-///
-/// 1. Client sends the hashed password to request a token, which is encrypted with PASERK using the hashed password as the key.
-/// 2. Client gets the encrypted token and decrypts it.
-/// 3. Client sends the decrypted token in its header to authorize.
 pub async fn authorize_paseto_token(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
