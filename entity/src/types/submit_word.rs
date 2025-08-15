@@ -17,6 +17,18 @@ impl<const N: usize> SubmitWord<N> {
     pub fn new(letters: [SubmitLetter; N]) -> Self {
         Self(letters)
     }
+
+    pub fn len(&self) -> usize {
+        N
+    }
+
+    pub fn to_vec(&self) -> Vec<&SubmitLetter> {
+        self.0.iter().collect()
+    }
+
+    pub fn into_vec(self) -> Vec<SubmitLetter> {
+        self.0.into_iter().collect()
+    }
 }
 
 impl<const N: usize> Display for SubmitWord<N> {
@@ -72,36 +84,6 @@ impl<'de, const N: usize> Visitor<'de> for SubmitWordVisitor<N> {
             ))),
         }
     }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        let components: Vec<&str> = v.split(Self::Value::SEPARATOR).collect();
-        if components.len() != N {
-            return Err(E::custom(format!(
-                "value must contain exactly {N} components separated by {}: {v}",
-                Self::Value::SEPARATOR
-            )));
-        }
-
-        let components_display = format!("{:?}", &components);
-        let letters: Vec<SubmitLetter> = match components
-            .into_iter()
-            .map(serde_json::from_str)
-            .try_collect()
-        {
-            Ok(letters) => letters,
-            Err(err) => {
-                return Err(E::custom(format!(
-                    "components separated by {} must be valid letters: {components_display}, {err}",
-                    Self::Value::SEPARATOR
-                )));
-            }
-        };
-
-        Ok(Self::Value::new(letters[..].try_into().unwrap()))
-    }
 }
 
 #[test]
@@ -118,5 +100,35 @@ fn test_serde() {
         SubmitLetter::new('Y', Matched::Partially),
     ]);
 
-    assert_tokens(&word, &[Token::Str("R+,U-,S?,T+,Y?")]);
+    fn get_letter_tokens(letter: &SubmitLetter) -> Vec<Token> {
+        vec![
+            Token::TupleStruct {
+                name: "SubmitLetter",
+                len: 2,
+            },
+            Token::Char(letter.inner()),
+            Token::Enum { name: "Matched" },
+            Token::Str(letter.matched().to_str()),
+            Token::Unit,
+            Token::TupleStructEnd,
+        ]
+    }
+
+    let tokens: Vec<Token> = word
+        .to_vec()
+        .into_iter()
+        .flat_map(get_letter_tokens)
+        .collect();
+
+    assert_tokens(
+        &word,
+        &[
+            &[Token::Seq {
+                len: Some(word.len()),
+            }],
+            &tokens[..],
+            &[Token::SeqEnd],
+        ]
+        .concat(),
+    );
 }

@@ -12,17 +12,19 @@ pub enum Matched {
     No,
 }
 
+impl Matched {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Yes => "+",
+            Self::Partially => "?",
+            Self::No => "-",
+        }
+    }
+}
+
 impl Display for Matched {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Yes => "+",
-                Self::Partially => "?",
-                Self::No => "-",
-            }
-        )
+        write!(f, "{}", self.to_str())
     }
 }
 

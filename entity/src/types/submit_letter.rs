@@ -11,6 +11,14 @@ impl SubmitLetter {
     pub fn new(c: char, matched: Matched) -> Self {
         Self(c.to_ascii_uppercase(), matched)
     }
+
+    pub fn inner(&self) -> char {
+        self.0
+    }
+
+    pub fn matched(&self) -> Matched {
+        self.1
+    }
 }
 
 impl Display for SubmitLetter {
