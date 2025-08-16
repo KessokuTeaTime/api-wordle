@@ -109,6 +109,8 @@ pub async fn submit_to_history(
         session: ActiveValue::Unchanged(session.to_owned()),
         submit_history: ActiveValue::Set(Some(submit_history.clone())),
         original_solution: ActiveValue::Unchanged(solution),
+        is_dirty: ActiveValue::Unchanged(false),
+        uploaded_at: ActiveValue::Unchanged(Utc::now().naive_utc()),
         ..Default::default()
     };
 
