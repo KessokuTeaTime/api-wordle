@@ -44,6 +44,10 @@ fn route_gets(app: Router) -> Router {
             "/play/session",
             get(play::session::get).route_layer(from_fn(validate_session_token)),
         )
+        .route(
+            "/play/start",
+            get(play::start::get).route_layer(from_fn(validate_session_token)),
+        )
 }
 
 fn route_posts(app: Router) -> Router {
@@ -54,6 +58,10 @@ fn route_posts(app: Router) -> Router {
     .route(
         "/internal/update",
         post(internal::update::post).route_layer(layers::kessoku_private_ci_authorization()),
+    )
+    .route(
+        "/play/submit",
+        post(play::submit::post).route_layer(from_fn(validate_session_token)),
     )
 }
 
