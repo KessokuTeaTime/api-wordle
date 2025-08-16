@@ -1,6 +1,6 @@
-use crate::SubmitLetter;
+use crate::{Matched, PuzzleSolution, SubmitLetter};
 
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
@@ -16,6 +16,55 @@ impl<const N: usize> SubmitWord<N> {
 
     pub fn new(letters: [SubmitLetter; N]) -> Self {
         Self(letters)
+    }
+
+    pub fn tint(answer: PuzzleSolution<N>, solution: PuzzleSolution<N>) -> Self {
+        // Tint matched letters
+        let mut unparsed_map = solution
+            .inner()
+            .into_iter()
+            .fold(HashMap::new(), |mut map, c| {
+                *map.entry(*c).or_insert(0) += 1;
+                map
+            });
+        let letters: Vec<(char, Option<Matched>)> = answer
+            .inner()
+            .into_iter()
+            .enumerate()
+            .map(|(index, &c)| {
+                (
+                    c,
+                    if solution.inner()[index] == c {
+                        unparsed_map.entry(c).and_modify(|count| *count -= 1);
+                        Some(Matched::Yes)
+                    } else {
+                        None
+                    },
+                )
+            })
+            .collect();
+
+        // Tint partially matched and unmatched letters
+        let letters: Vec<SubmitLetter> = letters
+            .iter()
+            .map(|&(c, matched)| match matched {
+                Some(matched) => SubmitLetter(c, matched),
+                None => {
+                    if unparsed_map
+                        .get(&c)
+                        .map(|&count| count > 0)
+                        .unwrap_or(false)
+                    {
+                        unparsed_map.entry(c).and_modify(|count| *count -= 1);
+                        SubmitLetter(c, Matched::Partially)
+                    } else {
+                        SubmitLetter(c, Matched::No)
+                    }
+                }
+            })
+            .collect();
+
+        Self(letters[..].try_into().unwrap())
     }
 
     pub fn len(&self) -> usize {

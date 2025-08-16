@@ -5,3 +5,6 @@ pub mod prelude;
 pub mod histories;
 pub mod puzzles;
 pub mod sessions;
+
+pub const PUZZLE_LETTERS_COUNT: usize = 5;
+pub const HISTORY_MAX_TRIES: usize = 6;

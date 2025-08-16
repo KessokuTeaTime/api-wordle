@@ -1,3 +1,5 @@
+use crate::{HISTORY_MAX_TRIES, PUZZLE_LETTERS_COUNT, SubmitWord};
+
 use std::fmt::Display;
 
 use sea_orm::{
@@ -6,10 +8,11 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::SubmitWord;
-
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SubmitHistory<const N: usize, const MAX: usize>(pub Vec<SubmitWord<N>>);
+pub struct SubmitHistory<
+    const N: usize = PUZZLE_LETTERS_COUNT,
+    const MAX: usize = HISTORY_MAX_TRIES,
+>(pub Vec<SubmitWord<N>>);
 
 impl<const N: usize, const MAX: usize> SubmitHistory<N, MAX> {
     pub fn new() -> Self {
@@ -20,13 +23,22 @@ impl<const N: usize, const MAX: usize> SubmitHistory<N, MAX> {
         self.0.len()
     }
 
+    pub fn remaining_tries(&self) -> usize {
+        MAX - self.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    pub fn is_full(&self) -> bool {
+        self.0.len() >= MAX
+    }
+
     pub fn submit(&mut self, word: SubmitWord<N>) -> Result<(), SubmitHistoryError> {
-        if self.0.len() < MAX {
-            Ok(self.0.push(word))
+        if !self.is_full() {
+            self.0.push(word);
+            Ok(())
         } else {
             Err(SubmitHistoryError::TooManyTimes { max: MAX })
         }
@@ -42,7 +54,7 @@ impl<const N: usize, const MAX: usize> From<SubmitHistory<N, MAX>> for Value {
 impl<const N: usize, const MAX: usize> ValueType for SubmitHistory<N, MAX> {
     fn try_from(v: Value) -> Result<Self, ValueTypeErr> {
         match v {
-            Value::Json(Some(json)) => Ok(serde_json::from_value(*json).map_err(|_| ValueTypeErr)?),
+            Value::Json(Some(json)) => serde_json::from_value(*json).map_err(|_| ValueTypeErr),
             _ => Err(ValueTypeErr),
         }
     }
