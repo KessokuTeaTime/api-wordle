@@ -46,7 +46,6 @@ pub async fn validate_session_token(
     next: Next,
 ) -> Response {
     info!("validating session token for {addr}…");
-    info!("{:?}", jar);
 
     let token = match jar.get(cookies::SESSION_TOKEN) {
         Some(cookie) => {
