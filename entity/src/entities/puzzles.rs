@@ -23,7 +23,7 @@ impl Display for Model {
             "{} [{} {}]",
             self.solution,
             self.date,
-            if self.is_deleted { '-' } else { '+' }
+            if self.is_deleted { "-" } else { "+" }
         )
     }
 }

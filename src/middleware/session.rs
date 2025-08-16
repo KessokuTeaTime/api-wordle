@@ -20,7 +20,7 @@ use tracing::info;
 
 /// The session token to inject as an extension.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SessionToken(String);
+pub struct SessionToken(pub String);
 
 /// Generates a local, symmetric session token.
 ///
@@ -49,27 +49,29 @@ pub async fn validate_session_token(
     info!("validating session token for {addr}…");
 
     let token = match jar.get(cookies::SESSION_TOKEN) {
-        Some(cookie) => cookie.value(),
+        Some(cookie) => {
+            let token = cookie.value();
+
+            let key: PasetoSymmetricKey<_, _> = Key::from(*SESSION_SYMMETRIC_KEY).into();
+            match PasetoParser::<V4, Local>::new().parse(token, &key) {
+                Ok(_) => {
+                    info!("validated {addr} with session token {token}!");
+                    Some(token)
+                }
+                Err(_) => {
+                    info!("failed to validate {addr}: cannot parse token");
+                    None
+                }
+            }
+        }
         None => {
             info!("failed to validate {addr}: token not found");
-            return (StatusCode::NOT_FOUND).into_response();
-        }
-    };
-
-    let key: PasetoSymmetricKey<_, _> = Key::from(*SESSION_SYMMETRIC_KEY).into();
-    let _json_value = match PasetoParser::<V4, Local>::new().parse(token, &key) {
-        Ok(json_value) => {
-            info!("validated {addr} with session token {token}!");
-            json_value
-        }
-        Err(_) => {
-            info!("failed to validate {addr}: cannot parse token");
-            return (StatusCode::NOT_FOUND).into_response();
+            None
         }
     };
 
     (
-        Extension(SessionToken(token.to_owned())),
+        token.map(|t| Extension(SessionToken(t.to_owned()))),
         next.run(request).await,
     )
         .into_response()

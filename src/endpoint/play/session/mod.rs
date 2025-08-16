@@ -1,16 +1,24 @@
 //! Endpoint `/play/session`.
 
-use crate::middleware::session::generate_session_token;
+use crate::middleware::session::{SessionToken, generate_session_token};
 
-use axum::{Json, http::StatusCode, response::IntoResponse};
+use axum::{Extension, Json, http::StatusCode, response::IntoResponse};
+use serde::Serialize;
 use serde_json::json;
 
-pub async fn get() -> impl IntoResponse {
-    let token = generate_session_token().await;
-    (
-        StatusCode::OK,
-        Json(json!({
-            "token": token
-        })),
-    )
+#[derive(Debug, Clone, Serialize)]
+pub struct GetResponse {
+    token: String,
+}
+
+pub async fn get(token_extension: Option<Extension<SessionToken>>) -> impl IntoResponse {
+    match token_extension {
+        Some(Extension(SessionToken(token))) => {
+            (StatusCode::OK, Json(GetResponse { token })).into_response()
+        }
+        None => {
+            let token = generate_session_token().await;
+            (StatusCode::CREATED, Json(GetResponse { token })).into_response()
+        }
+    }
 }

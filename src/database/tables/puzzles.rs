@@ -1,7 +1,7 @@
 //! Table `puzzles`.
 
 use entity::puzzles::Model as Puzzle;
-use entity::{PuzzleDate, PuzzleSolution, prelude::*};
+use entity::{PuzzleDate, PuzzleSolution, prelude::*, puzzles};
 use migration::OnConflict;
 use sea_orm::{
     ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter,
@@ -10,8 +10,6 @@ use sea_orm::{
 use tracing::{error, info, trace, warn};
 
 pub async fn get_dates(db: &DatabaseConnection, includes_deleted: bool) -> Vec<PuzzleDate> {
-    use entity::puzzles;
-
     info!("getting dates…");
     let query = if includes_deleted {
         Puzzles::find()
@@ -32,8 +30,6 @@ pub async fn get_dates(db: &DatabaseConnection, includes_deleted: bool) -> Vec<P
 }
 
 pub async fn get_puzzles(db: &DatabaseConnection, includes_deleted: bool) -> Vec<Puzzle> {
-    use entity::puzzles;
-
     info!("getting puzzles…");
     let query = if includes_deleted {
         Puzzles::find()
@@ -51,8 +47,6 @@ pub async fn get_puzzles(db: &DatabaseConnection, includes_deleted: bool) -> Vec
 }
 
 pub async fn get_puzzle(db: &DatabaseConnection, date: &PuzzleDate) -> Option<Puzzle> {
-    use entity::puzzles;
-
     info!("getting puzzle for {date}…");
     let puzzle = Puzzles::find_by_id(date.clone())
         .filter(Condition::all().add(puzzles::Column::IsDeleted.eq(false)))
@@ -73,8 +67,6 @@ pub async fn insert_solution(
     date: &PuzzleDate,
     solution: &PuzzleSolution,
 ) -> Result<(), DbErr> {
-    use entity::puzzles;
-
     info!("inserting puzzle for {date}…");
     let active_puzzle = puzzles::ActiveModel {
         date: ActiveValue::Set(date.clone()),
@@ -107,8 +99,6 @@ pub async fn update_solution(
     date: &PuzzleDate,
     solution: &PuzzleSolution,
 ) -> Result<(), DbErr> {
-    use entity::puzzles;
-
     let active_puzzle = puzzles::ActiveModel {
         date: ActiveValue::Set(date.clone()),
         solution: ActiveValue::Set(solution.clone()),

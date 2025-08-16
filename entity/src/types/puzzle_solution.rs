@@ -16,6 +16,14 @@ impl<const N: usize> PuzzleSolution<N> {
     pub fn inner(&self) -> &[char; N] {
         &self.0
     }
+
+    pub fn len(&self) -> usize {
+        N
+    }
+
+    pub fn is_empty(&self) -> bool {
+        false
+    }
 }
 
 impl<const N: usize> Display for PuzzleSolution<N> {

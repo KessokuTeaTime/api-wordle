@@ -4,7 +4,7 @@ use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
 use chrono::Datelike;
 use entity::puzzles::Model as Puzzle;
 use entity::{PuzzleDate, PuzzleSolution, puzzles::ResultPuzzle};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::database::tables::puzzles::{delete_solution, update_solution};
 use crate::database::{
@@ -18,6 +18,15 @@ pub struct GetParams {
     generate_if_missing: Option<bool>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct GetResponsePuzzle(ResultPuzzle);
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetResponsePuzzles {
+    count: usize,
+    puzzles: Vec<ResultPuzzle>,
+}
+
 pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
     let db = database::acquire_or_response!();
 
@@ -28,7 +37,11 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
         };
 
         if let Some(puzzle) = get_puzzle(&db, &date).await {
-            (StatusCode::OK, Json(puzzle.to_result_puzzle())).into_response()
+            (
+                StatusCode::OK,
+                Json(GetResponsePuzzle(puzzle.to_result_puzzle())),
+            )
+                .into_response()
         } else if params.generate_if_missing.unwrap_or(false) {
             let str = random_word::get_len(5, random_word::Lang::En).unwrap();
             let solution = match PuzzleSolution::try_from(str) {
@@ -44,11 +57,15 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
                         (
                             StatusCode::CREATED,
                             [("x-greeting", "Good morning, Night City!")],
-                            Json(ResultPuzzle { date, solution }),
+                            Json(GetResponsePuzzle(ResultPuzzle { date, solution })),
                         )
                             .into_response()
                     } else {
-                        (StatusCode::CREATED, Json(ResultPuzzle { date, solution })).into_response()
+                        (
+                            StatusCode::CREATED,
+                            Json(GetResponsePuzzle(ResultPuzzle { date, solution })),
+                        )
+                            .into_response()
                     }
                 }
                 Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
@@ -62,7 +79,14 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
             .into_iter()
             .map(Puzzle::to_result_puzzle)
             .collect();
-        (StatusCode::OK, Json(puzzles)).into_response()
+        (
+            StatusCode::OK,
+            Json(GetResponsePuzzles {
+                count: puzzles.len(),
+                puzzles,
+            }),
+        )
+            .into_response()
     }
 }
 

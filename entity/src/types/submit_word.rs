@@ -1,4 +1,4 @@
-use crate::{Matched, PuzzleSolution, SubmitLetter};
+use crate::{Matched, PUZZLE_LETTERS_COUNT, PuzzleSolution, SubmitLetter};
 
 use std::{collections::HashMap, fmt::Display};
 
@@ -9,7 +9,7 @@ use serde::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SubmitWord<const N: usize>(pub [SubmitLetter; N]);
+pub struct SubmitWord<const N: usize = PUZZLE_LETTERS_COUNT>(pub [SubmitLetter; N]);
 
 impl<const N: usize> SubmitWord<N> {
     pub const SEPARATOR: &str = ",";
