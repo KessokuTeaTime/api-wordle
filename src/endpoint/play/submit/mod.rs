@@ -1,6 +1,7 @@
 //! Endpoint `/play/submit`.
 
 use crate::{
+    WORDS,
     database::{self, tables::histories::submit_to_history},
     middleware::session::SessionToken,
 };
@@ -42,7 +43,7 @@ pub async fn post(
         PuzzleDate::try_from(&params.date[..]),
         PuzzleSolution::try_from(&payload.answer[..]),
     ) {
-        (Ok(date), Ok(answer)) => (date, answer),
+        (Ok(date), Ok(answer)) if WORDS.contains(&&answer.to_string()[..]) => (date, answer),
         _ => return (StatusCode::BAD_REQUEST).into_response(),
     };
 
