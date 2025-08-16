@@ -42,12 +42,12 @@ pub async fn generate_session_token() -> String {
 pub async fn validate_session_token(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     jar: CookieJar,
-    request: Request,
+    mut request: Request,
     next: Next,
 ) -> Response {
     info!("validating session token for {addr}…");
 
-    let token = match jar.get(cookies::SESSION_TOKEN) {
+    match jar.get(cookies::SESSION_TOKEN) {
         Some(cookie) => {
             let token = cookie.value();
 
@@ -55,23 +55,18 @@ pub async fn validate_session_token(
             match PasetoParser::<V4, Local>::new().parse(token, &key) {
                 Ok(_) => {
                     info!("validated {addr} with session token {token}!");
-                    Some(token)
+                    request
+                        .extensions_mut()
+                        .insert(SessionToken(token.to_owned()));
                 }
                 Err(_) => {
                     info!("failed to validate {addr}: cannot parse token");
-                    None
                 }
             }
         }
         None => {
             info!("failed to validate {addr}: token not found");
-            None
         }
     };
-
-    (
-        token.map(|t| Extension(SessionToken(t.to_owned()))),
-        next.run(request).await,
-    )
-        .into_response()
+    next.run(request).await
 }
