@@ -6,14 +6,11 @@ use migration::OnConflict;
 use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait};
 use tracing::{error, info};
 
-pub async fn insert_or_update_session(
-    db: &DatabaseConnection,
-    session: String,
-) -> Result<(), DbErr> {
+pub async fn insert_or_update_session(db: &DatabaseConnection, session: &str) -> Result<(), DbErr> {
     info!("inserting or updating session {session}…");
     let now = Utc::now().naive_utc();
     let active_session = sessions::ActiveModel {
-        session: ActiveValue::Set(session.clone()),
+        session: ActiveValue::Set(session.to_owned()),
         created_at: ActiveValue::Set(now),
         updated_at: ActiveValue::Set(now),
     };
@@ -38,8 +35,8 @@ pub async fn insert_or_update_session(
     }
 }
 
-pub async fn delete_solution(db: &DatabaseConnection, session: String) -> Result<(), DbErr> {
-    match Sessions::delete_by_id(session.clone()).exec(db).await {
+pub async fn delete_session(db: &DatabaseConnection, session: &str) -> Result<(), DbErr> {
+    match Sessions::delete_by_id(session.to_owned()).exec(db).await {
         Ok(_) => {
             info!("deleted session {session}");
             Ok(())

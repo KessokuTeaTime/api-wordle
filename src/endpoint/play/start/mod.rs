@@ -1,12 +1,19 @@
 //! Endpoint `/play/start`.
 
 use crate::{
-    database::{self, tables::puzzles::get_puzzle},
+    database::{
+        self,
+        tables::{
+            histories::create_history,
+            puzzles::{get_puzzle, insert_solution},
+            sessions::insert_or_update_session,
+        },
+    },
     middleware::session::SessionToken,
 };
 
 use axum::{Extension, Json, extract::Query, http::StatusCode, response::IntoResponse};
-use entity::{HISTORY_MAX_TRIES, PuzzleDate, puzzles::Model as Puzzle};
+use entity::{HISTORY_MAX_TRIES, PuzzleDate, PuzzleSolution, puzzles::Model as Puzzle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -20,12 +27,13 @@ pub struct GetResponse {
 }
 
 pub async fn get(
-    token: Option<Extension<SessionToken>>,
+    session: Option<Extension<SessionToken>>,
     Query(params): Query<GetParams>,
 ) -> impl IntoResponse {
-    if token.is_none() {
-        return (StatusCode::NOT_FOUND).into_response();
-    }
+    let session = match session {
+        Some(Extension(SessionToken(session))) => session,
+        None => return (StatusCode::NOT_FOUND).into_response(),
+    };
 
     let db = database::acquire_or_response!();
 
@@ -34,43 +42,33 @@ pub async fn get(
         Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
     };
 
-    if let Some(Puzzle { solution, .. }) = get_puzzle(&db, &date).await {
-        (
-            StatusCode::OK,
-            Json(GetResponse {
-                tries: HISTORY_MAX_TRIES,
-            }),
-        )
-            .into_response()
-    } else if params.generate_if_missing.unwrap_or(false) {
-        let str = random_word::get_len(5, random_word::Lang::En).unwrap();
-        let solution = match PuzzleSolution::try_from(str) {
-            Ok(solution) => solution,
-            Err(err) => {
-                return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-            }
-        };
+    match insert_or_update_session(&db, &session).await {
+        Ok(_) => {}
+        Err(err) => return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+    }
 
-        match insert_solution(&db, &date, &solution).await {
-            Ok(_) => {
-                if date.inner().year() == 2077 {
-                    (
-                        StatusCode::CREATED,
-                        [("x-greeting", "Good morning, Night City!")],
-                        Json(GetResponsePuzzle(ResultPuzzle { date, solution })),
-                    )
-                        .into_response()
-                } else {
-                    (
-                        StatusCode::CREATED,
-                        Json(GetResponsePuzzle(ResultPuzzle { date, solution })),
-                    )
-                        .into_response()
+    let solution = match get_puzzle(&db, &date).await {
+        Some(Puzzle { solution, .. }) => solution,
+        None => {
+            let str = random_word::get_len(5, random_word::Lang::En).unwrap();
+            let solution = match PuzzleSolution::try_from(str) {
+                Ok(solution) => solution,
+                Err(err) => {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+                }
+            };
+
+            match insert_solution(&db, &date, &solution).await {
+                Ok(_) => solution,
+                Err(err) => {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
                 }
             }
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
-    } else {
-        (StatusCode::NOT_FOUND).into_response()
+    };
+
+    match create_history(&db, &date, &session, &solution).await {
+        Ok(_) => (StatusCode::CREATED).into_response(),
+        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
     }
 }

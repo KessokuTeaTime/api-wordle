@@ -16,10 +16,10 @@ use tracing::{error, info, trace, warn};
 pub async fn get_history(
     db: &DatabaseConnection,
     date: &PuzzleDate,
-    session: String,
+    session: &str,
 ) -> Option<History> {
     info!("getting history for {date} with session {session}…");
-    let history = Histories::find_by_id((date.clone(), session.clone()))
+    let history = Histories::find_by_id((date.to_owned(), session.to_owned()))
         .one(db)
         .await
         .ok()
@@ -32,7 +32,37 @@ pub async fn get_history(
     history
 }
 
-#[derive(Debug, Clone)]
+pub async fn create_history(
+    db: &DatabaseConnection,
+    date: &PuzzleDate,
+    session: &str,
+    solution: &PuzzleSolution,
+) -> Result<(), DbErr> {
+    info!("creating history for {date} with session {session}…");
+    let active_history = histories::ActiveModel {
+        date: ActiveValue::Set(date.to_owned()),
+        session: ActiveValue::Set(session.to_owned()),
+        original_solution: ActiveValue::Set(solution.to_owned()),
+        is_dirty: ActiveValue::Set(false),
+        uploaded_at: ActiveValue::Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+
+    match Histories::insert(active_history).exec(db).await {
+        Ok(_) => {
+            info!("created history for {date} with session {session} and solution {solution}");
+            Ok(())
+        }
+        Err(err) => {
+            error!(
+                "failed to create history for {date} with session {session} and solution {solution}"
+            );
+            Err(err)
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SubmitResult {
     pub remaining_tries: usize,
     pub is_dirty: bool,
@@ -41,52 +71,41 @@ pub struct SubmitResult {
 pub async fn submit_to_history(
     db: &DatabaseConnection,
     date: &PuzzleDate,
-    session: String,
-    word: SubmitWord,
+    session: &str,
+    word: &SubmitWord,
 ) -> Result<SubmitResult, DbErr> {
     info!("submitting {word} to history at {date} with {session}…");
 
-    let mut remaining_tries: usize = 0;
-    let active_history = match Histories::find_by_id((date.clone(), session.clone()))
-        .one(db)
-        .await
-        .ok()
-        .flatten()
-    {
-        Some(History { submit_history, .. }) => match submit_history {
-            Some(mut history) => {
-                remaining_tries = history.remaining_tries() - 1;
-                history
-                    .submit(word)
-                    .map_err(|e| DbErr::Custom(e.to_string()))?;
-
-                histories::ActiveModel {
-                    date: ActiveValue::Unchanged(date.clone()),
-                    session: ActiveValue::Unchanged(session.clone()),
-                    submit_history: ActiveValue::Set(Some(history)),
-                    ..Default::default()
-                }
-            }
+    let (mut submit_history, is_dirty) =
+        match Histories::find_by_id((date.to_owned(), session.to_owned()))
+            .select_only()
+            .columns([histories::Column::SubmitHistory, histories::Column::IsDirty])
+            .into_tuple::<(Option<SubmitHistory>, bool)>()
+            .one(db)
+            .await
+            .ok()
+            .flatten()
+        {
+            Some((submit_history, is_dirty)) => match submit_history {
+                Some(history) => (history, is_dirty),
+                None => (SubmitHistory::new(), false),
+            },
             None => {
-                remaining_tries = HISTORY_MAX_TRIES;
-                let solution = Puzzles::find_by_id(date.clone()).one(db)
-                .await.ok().flatten() {
-
-                }
-
-                histories::ActiveModel {
-                    date: ActiveValue::Set(date.clone()),
-                    session: ActiveValue::Unchanged(session.clone()),
-                    submit_history: ActiveValue::Set(Some(SubmitHistory::new())),
-                    original_solution:
-                    uploaded_at: ActiveValue::Set(Utc::now().naive_utc())
-                }
+                error!("no history found for {date} with session {session}!");
+                return Err(DbErr::Custom(format!("session {session} has no history")));
             }
-        },
-        None => {
-            warn!("no history found for {date} with session {session}!");
-            return Err(DbErr::Custom(format!("session {session} has no history")));
-        }
+        };
+
+    submit_history
+        .submit(word.to_owned())
+        .map_err(|e| DbErr::Custom(e.to_string()))?;
+
+    let remaining_tries = submit_history.remaining_tries();
+    let active_history = histories::ActiveModel {
+        date: ActiveValue::Unchanged(date.to_owned()),
+        session: ActiveValue::Unchanged(session.to_owned()),
+        submit_history: ActiveValue::Set(Some(submit_history)),
+        ..Default::default()
     };
 
     match Histories::insert(active_history)
@@ -102,49 +121,11 @@ pub async fn submit_to_history(
             info!("submitted {word} to history at {date} with session {session}");
             Ok(SubmitResult {
                 remaining_tries,
-                is_dirty: (),
+                is_dirty,
             })
         }
         Err(err) => {
             error!("failed to submit {word} to history at {date} with session {session}: {err}");
-            Err(err)
-        }
-    }
-}
-
-pub async fn update_solution(
-    db: &DatabaseConnection,
-    date: &PuzzleDate,
-    solution: &PuzzleSolution,
-) -> Result<(), DbErr> {
-    use entity::puzzles;
-
-    let active_puzzle = puzzles::ActiveModel {
-        date: ActiveValue::Set(date.clone()),
-        solution: ActiveValue::Set(solution.clone()),
-        is_deleted: ActiveValue::Set(false),
-    };
-
-    match Puzzles::update(active_puzzle).exec(db).await {
-        Ok(_) => {
-            info!("updated solution {solution} for {date}");
-            Ok(())
-        }
-        Err(err) => {
-            error!("failed to update solution {solution} for {date}: {err}");
-            Err(err)
-        }
-    }
-}
-
-pub async fn delete_solution(db: &DatabaseConnection, date: &PuzzleDate) -> Result<(), DbErr> {
-    match Puzzles::delete_by_id(date.clone()).exec(db).await {
-        Ok(_) => {
-            info!("deleted solution for {date}");
-            Ok(())
-        }
-        Err(err) => {
-            error!("failed to delete solution for {date}: {err}");
             Err(err)
         }
     }
