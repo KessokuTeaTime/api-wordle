@@ -108,6 +108,7 @@ pub async fn submit_to_history(
         date: ActiveValue::Unchanged(date.to_owned()),
         session: ActiveValue::Unchanged(session.to_owned()),
         submit_history: ActiveValue::Set(Some(submit_history.clone())),
+        original_solution: ActiveValue::Unchanged(solution),
         ..Default::default()
     };
 
