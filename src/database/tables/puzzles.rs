@@ -68,6 +68,7 @@ pub async fn insert_solution(
     solution: &PuzzleSolution,
 ) -> Result<(), DbErr> {
     info!("inserting puzzle for {date}…");
+
     let active_puzzle = puzzles::ActiveModel {
         date: ActiveValue::Set(date.clone()),
         solution: ActiveValue::Set(solution.clone()),

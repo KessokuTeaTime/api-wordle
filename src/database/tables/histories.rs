@@ -8,8 +8,8 @@ use entity::{
 };
 use migration::OnConflict;
 use sea_orm::{
-    ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter,
-    QuerySelect,
+    ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel,
+    QueryFilter, QuerySelect,
 };
 use tracing::{error, info, trace, warn};
 
@@ -136,4 +136,44 @@ pub async fn submit_to_history(
             Err(err)
         }
     }
+}
+
+pub async fn mark_dirty(db: &DatabaseConnection, date: &PuzzleDate, solution: &PuzzleSolution) {
+    let h = Histories::find()
+        .filter(histories::Column::Date.eq(date.to_owned()))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    if h.is_empty() {
+        return;
+    }
+
+    info!(
+        "marking dirty for {} at {date} with solution {solution}",
+        match h.len() {
+            1 => "1 history",
+            count => &format!("{count} histories"),
+        }
+    );
+
+    let active_histories: Vec<histories::ActiveModel> = h
+        .into_iter()
+        .map(|history| histories::ActiveModel {
+            date: ActiveValue::Unchanged(date.to_owned()),
+            session: ActiveValue::Unchanged(history.session),
+            is_dirty: ActiveValue::Set(history.original_solution == *solution),
+            ..Default::default()
+        })
+        .collect();
+
+    Histories::insert_many(active_histories)
+        .on_conflict(
+            OnConflict::new()
+                .update_column(histories::Column::IsDirty)
+                .to_owned(),
+        )
+        .exec(db)
+        .await
+        .ok();
 }
