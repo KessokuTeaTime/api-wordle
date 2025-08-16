@@ -18,18 +18,15 @@ impl<const N: usize> SubmitWord<N> {
         Self(letters)
     }
 
-    pub fn tint(answer: PuzzleSolution<N>, solution: PuzzleSolution<N>) -> Self {
+    pub fn tint(answer: &PuzzleSolution<N>, solution: &PuzzleSolution<N>) -> Self {
         // Tint matched letters
-        let mut unparsed_map = solution
-            .inner()
-            .into_iter()
-            .fold(HashMap::new(), |mut map, c| {
-                *map.entry(*c).or_insert(0) += 1;
-                map
-            });
+        let mut unparsed_map = solution.inner().iter().fold(HashMap::new(), |mut map, c| {
+            *map.entry(*c).or_insert(0) += 1;
+            map
+        });
         let letters: Vec<(char, Option<Matched>)> = answer
             .inner()
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(index, &c)| {
                 (

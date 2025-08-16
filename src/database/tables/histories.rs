@@ -62,34 +62,38 @@ pub async fn create_history(
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SubmitResult {
     pub remaining_tries: usize,
     pub is_dirty: bool,
+    pub submit_history: SubmitHistory,
 }
 
 pub async fn submit_to_history(
     db: &DatabaseConnection,
     date: &PuzzleDate,
     session: &str,
-    word: &SubmitWord,
+    answer: &PuzzleSolution,
 ) -> Result<SubmitResult, DbErr> {
-    info!("submitting {word} to history at {date} with {session}…");
+    info!("submitting {answer} to history at {date} with {session}…");
 
-    let (mut submit_history, is_dirty) =
+    let (mut submit_history, is_dirty, solution) =
         match Histories::find_by_id((date.to_owned(), session.to_owned()))
             .select_only()
-            .columns([histories::Column::SubmitHistory, histories::Column::IsDirty])
-            .into_tuple::<(Option<SubmitHistory>, bool)>()
+            .columns([
+                histories::Column::SubmitHistory,
+                histories::Column::IsDirty,
+                histories::Column::OriginalSolution,
+            ])
+            .into_tuple::<(Option<SubmitHistory>, bool, PuzzleSolution)>()
             .one(db)
             .await
             .ok()
             .flatten()
         {
-            Some((submit_history, is_dirty)) => match submit_history {
-                Some(history) => (history, is_dirty),
-                None => (SubmitHistory::new(), false),
-            },
+            Some((submit_history, is_dirty, solution)) => {
+                (submit_history.unwrap_or_default(), is_dirty, solution)
+            }
             None => {
                 error!("no history found for {date} with session {session}!");
                 return Err(DbErr::Custom(format!("session {session} has no history")));
@@ -97,14 +101,13 @@ pub async fn submit_to_history(
         };
 
     submit_history
-        .submit(word.to_owned())
+        .submit(SubmitWord::tint(answer, &solution))
         .map_err(|e| DbErr::Custom(e.to_string()))?;
 
-    let remaining_tries = submit_history.remaining_tries();
     let active_history = histories::ActiveModel {
         date: ActiveValue::Unchanged(date.to_owned()),
         session: ActiveValue::Unchanged(session.to_owned()),
-        submit_history: ActiveValue::Set(Some(submit_history)),
+        submit_history: ActiveValue::Set(Some(submit_history.clone())),
         ..Default::default()
     };
 
@@ -118,14 +121,15 @@ pub async fn submit_to_history(
         .await
     {
         Ok(_) => {
-            info!("submitted {word} to history at {date} with session {session}");
+            info!("submitted {answer} to history at {date} with session {session}");
             Ok(SubmitResult {
-                remaining_tries,
+                remaining_tries: submit_history.remaining_tries(),
                 is_dirty,
+                submit_history,
             })
         }
         Err(err) => {
-            error!("failed to submit {word} to history at {date} with session {session}: {err}");
+            error!("failed to submit {answer} to history at {date} with session {session}: {err}");
             Err(err)
         }
     }

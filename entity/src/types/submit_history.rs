@@ -43,6 +43,10 @@ impl<const N: usize, const MAX: usize> SubmitHistory<N, MAX> {
             Err(SubmitHistoryError::TooManyTimes { max: MAX })
         }
     }
+
+    pub fn into_vec(self) -> Vec<SubmitWord<N>> {
+        self.0
+    }
 }
 
 impl<const N: usize, const MAX: usize> From<SubmitHistory<N, MAX>> for Value {

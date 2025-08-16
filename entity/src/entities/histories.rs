@@ -2,7 +2,7 @@
 
 use std::fmt::Display;
 
-use crate::{PuzzleDate, PuzzleSolution, SubmitHistory};
+use crate::{HISTORY_MAX_TRIES, PuzzleDate, PuzzleSolution, SubmitHistory};
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,15 @@ pub struct Model {
     pub original_solution: PuzzleSolution,
     pub is_dirty: bool,
     pub uploaded_at: DateTime,
+}
+
+impl Model {
+    pub fn remaining_tries(&self) -> usize {
+        match &self.submit_history {
+            Some(submit_history) => submit_history.remaining_tries(),
+            None => HISTORY_MAX_TRIES,
+        }
+    }
 }
 
 impl Display for Model {

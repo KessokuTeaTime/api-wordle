@@ -4,7 +4,7 @@ use crate::{
     database::{
         self,
         tables::{
-            histories::create_history,
+            histories::{create_history, get_history},
             puzzles::{get_puzzle, insert_solution},
             sessions::insert_or_update_session,
         },
@@ -13,7 +13,10 @@ use crate::{
 };
 
 use axum::{Extension, Json, extract::Query, http::StatusCode, response::IntoResponse};
-use entity::{HISTORY_MAX_TRIES, PuzzleDate, PuzzleSolution, puzzles::Model as Puzzle};
+use entity::{
+    HISTORY_MAX_TRIES, PuzzleDate, PuzzleSolution, SubmitHistory, SubmitWord,
+    puzzles::Model as Puzzle,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -21,9 +24,11 @@ pub struct GetParams {
     date: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct GetResponse {
-    tries: usize,
+    remaining_tries: usize,
+    is_dirty: bool,
+    history: Vec<SubmitWord>,
 }
 
 pub async fn get(
@@ -47,28 +52,54 @@ pub async fn get(
         Err(err) => return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
     }
 
-    let solution = match get_puzzle(&db, &date).await {
-        Some(Puzzle { solution, .. }) => solution,
+    match get_history(&db, &date, &session).await {
+        Some(history) => (
+            StatusCode::OK,
+            Json(GetResponse {
+                remaining_tries: history.remaining_tries(),
+                is_dirty: history.is_dirty,
+                history: history
+                    .submit_history
+                    .map(SubmitHistory::into_vec)
+                    .unwrap_or_default(),
+            }),
+        )
+            .into_response(),
         None => {
-            let str = random_word::get_len(5, random_word::Lang::En).unwrap();
-            let solution = match PuzzleSolution::try_from(str) {
-                Ok(solution) => solution,
-                Err(err) => {
-                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
+            let solution = match get_puzzle(&db, &date).await {
+                Some(Puzzle { solution, .. }) => solution,
+                None => {
+                    let str = random_word::get_len(5, random_word::Lang::En).unwrap();
+                    let solution = match PuzzleSolution::try_from(str) {
+                        Ok(solution) => solution,
+                        Err(err) => {
+                            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                                .into_response();
+                        }
+                    };
+
+                    match insert_solution(&db, &date, &solution).await {
+                        Ok(_) => solution,
+                        Err(err) => {
+                            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                                .into_response();
+                        }
+                    }
                 }
             };
 
-            match insert_solution(&db, &date, &solution).await {
-                Ok(_) => solution,
-                Err(err) => {
-                    return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
-                }
+            match create_history(&db, &date, &session, &solution).await {
+                Ok(_) => (
+                    StatusCode::CREATED,
+                    Json(GetResponse {
+                        remaining_tries: HISTORY_MAX_TRIES,
+                        is_dirty: false,
+                        ..Default::default()
+                    }),
+                )
+                    .into_response(),
+                Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
             }
         }
-    };
-
-    match create_history(&db, &date, &session, &solution).await {
-        Ok(_) => (StatusCode::CREATED).into_response(),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
     }
 }
