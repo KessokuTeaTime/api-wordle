@@ -12,13 +12,13 @@ pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> im
     match session {
         Some(Extension(SessionToken(session))) => {
             let mut cookie = Cookie::new(cookies::SESSION_TOKEN, session);
-            cookie.unset_path();
+            cookie.set_path("/play");
             (StatusCode::OK, jar.add(cookie)).into_response()
         }
         None => {
             let token = generate_session_token().await;
             let mut cookie = Cookie::new(cookies::SESSION_TOKEN, token);
-            cookie.unset_path();
+            cookie.set_path("/play");
             (StatusCode::CREATED, jar.add(cookie)).into_response()
         }
     }
