@@ -1,23 +1,27 @@
 //! Endpoint `/play/session`.
 
-use crate::middleware::session::{SessionToken, generate_session_token};
+use crate::{
+    cookies,
+    middleware::session::{SessionToken, generate_session_token},
+};
 
-use axum::{Extension, Json, http::StatusCode, response::IntoResponse};
-use serde::Serialize;
+use axum::{Extension, http::StatusCode, response::IntoResponse};
+use axum_extra::extract::{CookieJar, cookie::Cookie};
 
-#[derive(Debug, Clone, Serialize)]
-pub struct GetResponse {
-    token: String,
-}
-
-pub async fn get(session: Option<Extension<SessionToken>>) -> impl IntoResponse {
+pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> impl IntoResponse {
     match session {
-        Some(Extension(SessionToken(session))) => {
-            (StatusCode::OK, Json(GetResponse { token: session })).into_response()
-        }
+        Some(Extension(SessionToken(session))) => (
+            StatusCode::OK,
+            jar.add(Cookie::new(cookies::SESSION_TOKEN, session)),
+        )
+            .into_response(),
         None => {
             let token = generate_session_token().await;
-            (StatusCode::CREATED, Json(GetResponse { token })).into_response()
+            (
+                StatusCode::CREATED,
+                jar.add(Cookie::new(cookies::SESSION_TOKEN, token)),
+            )
+                .into_response()
         }
     }
 }

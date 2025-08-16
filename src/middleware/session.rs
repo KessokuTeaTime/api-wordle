@@ -7,7 +7,6 @@ use std::net::SocketAddr;
 use axum::{
     Extension,
     extract::{ConnectInfo, Request},
-    http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
 };
