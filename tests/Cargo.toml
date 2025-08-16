@@ -1,0 +1,15 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dotenvy = "0.15.7"
+entity = { path = "../entity" }
+migration = { path = "../migration" }
+sea-orm = { version = "1.1.14", features = ["chrono"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1.47.1", features = ["rt", "macros"] }
+
+[lints]
+workspace = true

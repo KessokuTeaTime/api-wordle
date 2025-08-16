@@ -1,8 +1,8 @@
 //! The API endpoints.
 
-use crate::middleware::auth::{
-    authorize_paseto_token,
-    layers::{admin_password_authorization, kessoku_private_ci_authorization},
+use crate::middleware::{
+    auth::{authorize_paseto_token, layers},
+    session::validate_session_token,
 };
 
 use axum::{
@@ -15,6 +15,7 @@ use tower_http::trace::TraceLayer;
 pub mod auth;
 pub mod dates;
 pub mod internal;
+pub mod play;
 pub mod root;
 pub mod validate;
 
@@ -33,7 +34,15 @@ fn route_gets(app: Router) -> Router {
         .route("/validate", get(validate::get))
         .route(
             "/auth",
-            get(auth::get).route_layer(admin_password_authorization()),
+            get(auth::get).route_layer(layers::admin_password_authorization()),
+        )
+        .route(
+            "/auth/validate",
+            get(auth::validate::get).route_layer(from_fn(authorize_paseto_token)),
+        )
+        .route(
+            "/play/session",
+            get(play::session::get).route_layer(from_fn(validate_session_token)),
         )
 }
 
@@ -44,7 +53,7 @@ fn route_posts(app: Router) -> Router {
     )
     .route(
         "/internal/update",
-        post(internal::update::post).route_layer(kessoku_private_ci_authorization()),
+        post(internal::update::post).route_layer(layers::kessoku_private_ci_authorization()),
     )
 }
 

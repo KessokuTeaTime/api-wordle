@@ -1,46 +1,77 @@
+//! The database access.
+
+use std::time::Duration;
+
 use crate::env::DATABASE_URL;
 
 use api_framework::static_lazy_lock;
-use diesel::{PgConnection, r2d2::ConnectionManager};
-use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use tracing::info;
+use migration::{Migrator, MigratorTrait};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
+use tracing::log::LevelFilter;
 
-pub mod types;
-
-pub mod puzzles;
-
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+pub mod tables;
 
 static_lazy_lock! {
-    pub POOL: Pool = establish_pool();
-    "The connection pool for PostgreSQL."
+    pub OPTIONS: ConnectOptions = {
+        let mut options = ConnectOptions::new(&*DATABASE_URL);
+        options.max_connections(100)
+            .connect_timeout(Duration::from_secs(10))
+            .idle_timeout(Duration::from_secs(5))
+            .sqlx_logging(true)
+            .sqlx_logging_level(LevelFilter::Trace);
+        options
+    };
+    "The connect options for PostgreSQL."
 }
 
-pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
-
-fn establish_pool() -> Pool {
-    info!("establishing connection pool with {}…", *DATABASE_URL);
-    let manager = ConnectionManager::<PgConnection>::new(&*DATABASE_URL);
-    let pool = Pool::builder()
-        .max_size(15)
-        .build(manager)
-        .unwrap_or_else(|e| {
-            panic!(
-                "failed to establish connection pool with {}: {e}",
-                *DATABASE_URL
-            )
-        });
-
-    info!("established connection pool with {}", *DATABASE_URL);
-    pool
+/// Acquires a database connection, or runs an expression.
+///
+/// See: [`acquire`]
+#[macro_export]
+macro_rules! acquire_or {
+    (|$name:ident| $expr:expr) => {
+        match $crate::database::acquire().await {
+            Ok(db) => db,
+            Err($name) => $expr,
+        }
+    };
 }
 
-pub fn run_migrations() {
-    info!("running database migrations…");
-    let mut conn = POOL
-        .get()
-        .unwrap_or_else(|e| panic!("failed to get connection: {e}"));
+pub use acquire_or;
 
-    conn.run_pending_migrations(MIGRATIONS)
-        .unwrap_or_else(|e| panic!("failed to run migrations: {e}"));
+/// Acquires a database connection, or responses with a 500 Internal Server Error and the corresponding error description.
+///
+/// See: [`acquire`], [`acquire_or`]
+#[macro_export]
+macro_rules! acquire_or_response {
+    () => {
+        $crate::database::acquire_or!(|err| return (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            err.to_string()
+        )
+            .into_response())
+    };
+}
+
+pub use acquire_or_response;
+
+/// Sets up the database and run necessary migrations.
+///
+/// # Errors
+///
+/// Returns a [`DbErr`] if the setup process fails.
+pub async fn setup() -> Result<(), DbErr> {
+    let db = acquire().await?;
+    Migrator::up(&db, None).await
+}
+
+/// Acquires a database connection.
+///
+/// # Errors
+///
+/// Returns a [`DbErr`] if unable to acquire a connection.
+///
+/// See: [`OPTIONS`]
+pub async fn acquire() -> Result<DatabaseConnection, DbErr> {
+    Database::connect(OPTIONS.clone()).await
 }

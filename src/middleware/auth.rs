@@ -1,9 +1,11 @@
-//! Middlewares for authorization.
+//! Middleware for authorization.
+
+use crate::env::PASETO_SYMMETRIC_KEY;
 
 use std::net::SocketAddr;
 
 use axum::{
-    extract::{ConnectInfo, FromRequestParts, Request},
+    extract::{ConnectInfo, Request},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -18,8 +20,6 @@ use rusty_paseto::{
 };
 use tracing::info;
 
-use crate::env::PASETO_SYMMETRIC_KEY;
-
 /// Router layers for authorization.
 pub mod layers {
     use crate::env::{ADMIN_PASSWORD, KTT_API_PASSWORD, KTT_API_USERNAME};
@@ -32,11 +32,19 @@ pub mod layers {
         AddAuthorizationLayer::basic(&KTT_API_USERNAME, &KTT_API_PASSWORD)
     }
 
+    /// The layer that authorizes requests with the hashed admin password.
     pub fn admin_password_authorization() -> AddAuthorizationLayer {
         AddAuthorizationLayer::bearer(&hex::encode(*ADMIN_PASSWORD))
     }
 }
 
+/// Generates a local, symmetric PASETO token with a default expiration.
+///
+/// # Panics
+///
+/// Panics if unable to generate a PASETO token.
+///
+/// See: [`PASETO_SYMMETRIC_KEY`]
 pub async fn generate_paseto_token() -> String {
     info!("generating PASETO token…");
     let timeout = (chrono::Local::now() + chrono::Duration::minutes(5)).to_rfc3339();
@@ -48,11 +56,9 @@ pub async fn generate_paseto_token() -> String {
         .unwrap()
 }
 
-/// Authorizes the request with PASETO.
+/// Authorizes the PASETO token.
 ///
-/// 1. Client sends the hashed password to request a token, which is encrypted with PASERK using the hashed password as the key.
-/// 2. Client gets the encrypted token and decrypts it.
-/// 3. Client sends the decrypted token in its header to authorize.
+/// See: [`generate_paseto_token`]
 pub async fn authorize_paseto_token(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
