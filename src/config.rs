@@ -9,7 +9,10 @@ pub trait RuntimeConfig {
     const PATH: LazyLock<PathBuf>;
 
     fn path() -> PathBuf {
-        PathBuf::from(clap::crate_name!()).join(Self::PATH.to_owned())
+        let path = Self::PATH;
+        PathBuf::from("config")
+            .join(clap::crate_name!())
+            .join(path.to_owned())
     }
 
     async fn load() -> Self
