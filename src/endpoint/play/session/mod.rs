@@ -1,23 +1,15 @@
 //! Endpoint `/play/session`.
 
-use std::net::SocketAddr;
-
 use crate::{
     cookies,
     middleware::session::{SessionToken, generate_session_token},
 };
 
-use axum::{
-    Extension,
-    extract::{ConnectInfo, Query},
-    http::StatusCode,
-    response::IntoResponse,
-};
+use axum::{Extension, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::{
     CookieJar,
     cookie::{Cookie, SameSite},
 };
-use serde::Deserialize;
 
 pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> impl IntoResponse {
     fn setup_cookie(session: String) -> Cookie<'static> {

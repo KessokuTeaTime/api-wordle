@@ -5,10 +5,9 @@ use crate::{cookies, env::SESSION_SYMMETRIC_KEY};
 use std::net::SocketAddr;
 
 use axum::{
-    Extension,
     extract::{ConnectInfo, Request},
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use axum_extra::extract::CookieJar;
 use rusty_paseto::{

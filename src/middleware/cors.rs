@@ -6,7 +6,7 @@
 pub mod layers {
     use api_framework::static_lazy_lock;
     use axum::http::{HeaderValue, header, method::Method, request};
-    use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+    use tower_http::cors::{AllowOrigin, CorsLayer};
 
     use crate::config::{CorsRuntimeConfig, RuntimeConfig};
 

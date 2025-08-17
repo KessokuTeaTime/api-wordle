@@ -2,14 +2,13 @@
 
 use chrono::Utc;
 use entity::{
-    HISTORY_MAX_TRIES, PuzzleDate, PuzzleSolution, SubmitHistory, SubmitWord,
+    PuzzleDate, PuzzleSolution, SubmitHistory, SubmitWord,
     histories::{self, Model as History},
     prelude::*,
 };
 use migration::OnConflict;
 use sea_orm::{
-    ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel,
-    QueryFilter, QuerySelect,
+    ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect,
 };
 use tracing::{error, info, warn};
 
