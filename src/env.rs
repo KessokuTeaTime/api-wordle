@@ -63,3 +63,8 @@ static_lazy_lock! {
     pub TRACING_DIR: PathBuf = parse_env!("TRACING_DIR" => |s| Ok(PathBuf::from(s))).unwrap_or(PathBuf::from("/tmp/tracing")).join(clap::crate_name!());
     "The directory for tracing files. Defaults to `/tmp/tracing/wordle` if not specified."
 }
+
+static_lazy_lock! {
+    pub CONFIG_DIR: PathBuf = parse_env!("CONFIG_DIR" => |s| Ok(PathBuf::from(s))).expect("CONFIG_DIR not set in environment").join(clap::crate_name!());
+    "The directory for config files."
+}

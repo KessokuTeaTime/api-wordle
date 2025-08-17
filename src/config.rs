@@ -1,5 +1,7 @@
 //! Defines runtime configs.
 
+use crate::env::CONFIG_DIR;
+
 use std::{path::PathBuf, sync::LazyLock};
 
 use axum::http::HeaderValue;
@@ -10,9 +12,7 @@ pub trait RuntimeConfig {
 
     fn path() -> PathBuf {
         let path = Self::PATH;
-        PathBuf::from("config")
-            .join(clap::crate_name!())
-            .join(path.to_owned())
+        CONFIG_DIR.join(path.to_owned())
     }
 
     async fn load() -> Self
