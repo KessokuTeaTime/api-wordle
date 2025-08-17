@@ -24,6 +24,7 @@ pub struct PostPayload {
 pub struct PostResponse {
     remaining_tries: usize,
     is_dirty: bool,
+    is_completed: bool,
     history: Vec<SubmitWord>,
 }
 
@@ -51,8 +52,9 @@ pub async fn post(
         Ok(result) => (
             StatusCode::ACCEPTED,
             Json(PostResponse {
-                remaining_tries: result.remaining_tries,
+                remaining_tries: result.submit_history.remaining_tries(),
                 is_dirty: result.is_dirty,
+                is_completed: result.is_completed,
                 history: result.submit_history.into_vec(),
             }),
         )

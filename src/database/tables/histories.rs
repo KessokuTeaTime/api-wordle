@@ -11,7 +11,7 @@ use sea_orm::{
     ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel,
     QueryFilter, QuerySelect,
 };
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, warn};
 
 pub async fn get_history(
     db: &DatabaseConnection,
@@ -64,9 +64,9 @@ pub async fn create_history(
 
 #[derive(Debug, Clone)]
 pub struct SubmitResult {
-    pub remaining_tries: usize,
-    pub is_dirty: bool,
     pub submit_history: SubmitHistory,
+    pub is_dirty: bool,
+    pub is_completed: bool,
 }
 
 pub async fn submit_to_history(
@@ -83,15 +83,24 @@ pub async fn submit_to_history(
             .columns([
                 histories::Column::SubmitHistory,
                 histories::Column::IsDirty,
+                histories::Column::IsCompleted,
                 histories::Column::OriginalSolution,
             ])
-            .into_tuple::<(Option<SubmitHistory>, bool, PuzzleSolution)>()
+            .into_tuple::<(Option<SubmitHistory>, bool, bool, PuzzleSolution)>()
             .one(db)
             .await
             .ok()
             .flatten()
         {
-            Some((submit_history, is_dirty, solution)) => {
+            Some((submit_history, is_dirty, true, _)) => {
+                warn!("history is completed for {date} with session {session}!");
+                return Ok(SubmitResult {
+                    submit_history: submit_history.unwrap_or_default(),
+                    is_dirty,
+                    is_completed: true,
+                });
+            }
+            Some((submit_history, is_dirty, false, solution)) => {
                 (submit_history.unwrap_or_default(), is_dirty, solution)
             }
             None => {
@@ -100,8 +109,9 @@ pub async fn submit_to_history(
             }
         };
 
+    let word = SubmitWord::tint(answer, &solution);
     submit_history
-        .submit(SubmitWord::tint(answer, &solution))
+        .submit(word)
         .map_err(|e| DbErr::Custom(e.to_string()))?;
 
     let active_history = histories::ActiveModel {
@@ -110,14 +120,17 @@ pub async fn submit_to_history(
         submit_history: ActiveValue::Set(Some(submit_history.clone())),
         original_solution: ActiveValue::Unchanged(solution),
         is_dirty: ActiveValue::Unchanged(false),
+        is_completed: ActiveValue::Set(word.all_matches()),
         uploaded_at: ActiveValue::Unchanged(Utc::now().naive_utc()),
-        ..Default::default()
     };
 
     match Histories::insert(active_history)
         .on_conflict(
             OnConflict::columns([histories::Column::Date, histories::Column::Session])
-                .update_column(histories::Column::SubmitHistory)
+                .update_columns([
+                    histories::Column::SubmitHistory,
+                    histories::Column::IsCompleted,
+                ])
                 .to_owned(),
         )
         .exec(db)
@@ -126,9 +139,9 @@ pub async fn submit_to_history(
         Ok(_) => {
             info!("submitted {answer} to history at {date} with session {session}");
             Ok(SubmitResult {
-                remaining_tries: submit_history.remaining_tries(),
-                is_dirty,
                 submit_history,
+                is_dirty,
+                is_completed: word.all_matches(),
             })
         }
         Err(err) => {

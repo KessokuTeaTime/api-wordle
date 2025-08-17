@@ -72,6 +72,10 @@ impl<const N: usize> SubmitWord<N> {
         false
     }
 
+    pub fn all_matches(&self) -> bool {
+        self.0.iter().all(|l| l.matches == Matches::Yes)
+    }
+
     pub fn to_vec(&self) -> Vec<&SubmitLetter> {
         self.0.iter().collect()
     }

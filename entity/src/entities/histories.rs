@@ -18,6 +18,7 @@ pub struct Model {
     pub submit_history: Option<SubmitHistory>,
     pub original_solution: PuzzleSolution,
     pub is_dirty: bool,
+    pub is_completed: bool,
     pub uploaded_at: DateTime,
 }
 

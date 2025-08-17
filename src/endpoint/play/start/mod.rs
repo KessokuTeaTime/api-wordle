@@ -28,6 +28,7 @@ pub struct GetParams {
 pub struct GetResponse {
     remaining_tries: usize,
     is_dirty: bool,
+    is_completed: bool,
     history: Vec<SubmitWord>,
 }
 
@@ -58,6 +59,7 @@ pub async fn get(
             Json(GetResponse {
                 remaining_tries: history.remaining_tries(),
                 is_dirty: history.is_dirty,
+                is_completed: history.is_completed,
                 history: history
                     .submit_history
                     .map(SubmitHistory::into_vec)
@@ -94,6 +96,7 @@ pub async fn get(
                     Json(GetResponse {
                         remaining_tries: HISTORY_MAX_TRIES,
                         is_dirty: false,
+                        is_completed: false,
                         ..Default::default()
                     }),
                 )
