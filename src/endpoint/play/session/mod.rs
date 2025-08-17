@@ -6,13 +6,16 @@ use crate::{
 };
 
 use axum::{Extension, http::StatusCode, response::IntoResponse};
-use axum_extra::extract::{CookieJar, cookie::Cookie};
+use axum_extra::extract::{
+    CookieJar,
+    cookie::{Cookie, SameSite},
+};
 
 pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> impl IntoResponse {
     fn setup_cookie(session: String) -> Cookie<'static> {
         let mut cookie = Cookie::new(cookies::SESSION_TOKEN, session);
         cookie.set_http_only(true);
-        cookie.set_same_site(None);
+        cookie.set_same_site(Some(SameSite::None));
         cookie.set_secure(true);
         cookie
     }
