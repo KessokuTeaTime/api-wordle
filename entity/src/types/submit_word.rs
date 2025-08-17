@@ -1,4 +1,4 @@
-use crate::{Matched, PUZZLE_LETTERS_COUNT, PuzzleSolution, SubmitLetter};
+use crate::{Matches, PUZZLE_LETTERS_COUNT, PuzzleSolution, SubmitLetter};
 
 use std::{collections::HashMap, fmt::Display};
 
@@ -19,12 +19,12 @@ impl<const N: usize> SubmitWord<N> {
     }
 
     pub fn tint(answer: &PuzzleSolution<N>, solution: &PuzzleSolution<N>) -> Self {
-        // Tint matched letters
+        // Tint matches letters
         let mut unparsed_map = solution.inner().iter().fold(HashMap::new(), |mut map, c| {
             *map.entry(*c).or_insert(0) += 1;
             map
         });
-        let letters: Vec<(char, Option<Matched>)> = answer
+        let letters: Vec<(char, Option<Matches>)> = answer
             .inner()
             .iter()
             .enumerate()
@@ -33,7 +33,7 @@ impl<const N: usize> SubmitWord<N> {
                     c,
                     if solution.inner()[index] == c {
                         unparsed_map.entry(c).and_modify(|count| *count -= 1);
-                        Some(Matched::Yes)
+                        Some(Matches::Yes)
                     } else {
                         None
                     },
@@ -41,11 +41,11 @@ impl<const N: usize> SubmitWord<N> {
             })
             .collect();
 
-        // Tint partially matched and unmatched letters
+        // Tint partially matches and unmatched letters
         let letters: Vec<SubmitLetter> = letters
             .iter()
-            .map(|&(c, matched)| match matched {
-                Some(matched) => SubmitLetter(c, matched),
+            .map(|&(c, matches)| match matches {
+                Some(matches) => SubmitLetter::new(c, matches),
                 None => {
                     if unparsed_map
                         .get(&c)
@@ -53,9 +53,9 @@ impl<const N: usize> SubmitWord<N> {
                         .unwrap_or(false)
                     {
                         unparsed_map.entry(c).and_modify(|count| *count -= 1);
-                        SubmitLetter(c, Matched::Partially)
+                        SubmitLetter::new(c, Matches::Partially)
                     } else {
-                        SubmitLetter(c, Matched::No)
+                        SubmitLetter::new(c, Matches::No)
                     }
                 }
             })
@@ -142,33 +142,34 @@ impl<'de, const N: usize> Visitor<'de> for SubmitWordVisitor<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Matched, SubmitLetter, SubmitWord};
+    use crate::{Matches, SubmitLetter, SubmitWord};
 
     use serde_test::{Token, assert_tokens};
 
     #[test]
     fn test_serde() {
         let word = SubmitWord([
-            SubmitLetter::new('R', Matched::Yes),
-            SubmitLetter::new('U', Matched::No),
-            SubmitLetter::new('S', Matched::Partially),
-            SubmitLetter::new('T', Matched::Yes),
-            SubmitLetter::new('Y', Matched::Partially),
+            SubmitLetter::new('R', Matches::Yes),
+            SubmitLetter::new('U', Matches::No),
+            SubmitLetter::new('S', Matches::Partially),
+            SubmitLetter::new('T', Matches::Yes),
+            SubmitLetter::new('Y', Matches::Partially),
         ]);
 
         fn get_letter_tokens(letter: &SubmitLetter) -> Vec<Token> {
             vec![
-                Token::TupleStruct {
+                Token::Struct {
                     name: stringify!(SubmitLetter),
                     len: 2,
                 },
-                Token::Char(letter.inner()),
-                Token::Enum {
-                    name: stringify!(Matched),
+                Token::Str("letter"),
+                Token::Char(letter.letter),
+                Token::Str("matches"),
+                Token::UnitVariant {
+                    name: stringify!(Matches),
+                    variant: letter.matches.to_str(),
                 },
-                Token::Str(letter.matched().to_str()),
-                Token::Unit,
-                Token::TupleStructEnd,
+                Token::StructEnd,
             ]
         }
 

@@ -3,7 +3,7 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Matched {
+pub enum Matches {
     #[serde(rename = "+")]
     Yes,
     #[serde(rename = "?")]
@@ -12,7 +12,7 @@ pub enum Matched {
     No,
 }
 
-impl Matched {
+impl Matches {
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::Yes => "+",
@@ -22,13 +22,13 @@ impl Matched {
     }
 }
 
-impl Display for Matched {
+impl Display for Matches {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_str())
     }
 }
 
-impl From<&str> for Matched {
+impl From<&str> for Matches {
     fn from(value: &str) -> Self {
         match value {
             "+" => Self::Yes,
@@ -39,7 +39,7 @@ impl From<&str> for Matched {
     }
 }
 
-impl From<String> for Matched {
+impl From<String> for Matches {
     fn from(value: String) -> Self {
         Self::from(&value[..])
     }

@@ -1,6 +1,6 @@
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use entity::{
-    Matched, PuzzleDate, PuzzleSolution, SubmitLetter, SubmitWord, histories, prelude::*, puzzles,
+    Matches, PuzzleDate, PuzzleSolution, SubmitLetter, SubmitWord, histories, prelude::*, puzzles,
     sessions,
 };
 use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, TransactionTrait};
@@ -29,11 +29,11 @@ async fn test() {
     let mut submit_history = history.submit_history.unwrap_or_default();
     submit_history
         .submit(SubmitWord::new([
-            SubmitLetter::new('R', Matched::Yes),
-            SubmitLetter::new('U', Matched::No),
-            SubmitLetter::new('S', Matched::Partially),
-            SubmitLetter::new('T', Matched::Yes),
-            SubmitLetter::new('Y', Matched::Partially),
+            SubmitLetter::new('R', Matches::Yes),
+            SubmitLetter::new('U', Matches::No),
+            SubmitLetter::new('S', Matches::Partially),
+            SubmitLetter::new('T', Matches::Yes),
+            SubmitLetter::new('Y', Matches::Partially),
         ]))
         .unwrap();
 
