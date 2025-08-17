@@ -5,7 +5,7 @@
 /// Router layers for Cross-Origin Resource Sharing (CORS).
 pub mod layers {
     use api_framework::static_lazy_lock;
-    use axum::http::{HeaderValue, header, request};
+    use axum::http::{HeaderValue, header, method::Method, request};
     use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
     use crate::config::{CorsRuntimeConfig, RuntimeConfig};
@@ -17,7 +17,7 @@ pub mod layers {
             config.contains(&origin)
         }))
         .allow_credentials(true)
-        .allow_methods(Any)
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
         .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::COOKIE]);
     }
 }
