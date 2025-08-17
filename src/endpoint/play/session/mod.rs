@@ -24,7 +24,7 @@ pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> im
         let mut cookie = Cookie::new(cookies::SESSION_TOKEN, session);
         cookie.set_http_only(true);
         cookie.set_same_site(SameSite::None);
-        // cookie.set_secure(true);
+        cookie.set_secure(None);
         cookie
     }
 
