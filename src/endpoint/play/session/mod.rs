@@ -22,8 +22,9 @@ use serde::Deserialize;
 pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> impl IntoResponse {
     fn setup_cookie(session: String) -> Cookie<'static> {
         let mut cookie = Cookie::new(cookies::SESSION_TOKEN, session);
+        cookie.set_http_only(true);
         cookie.set_same_site(SameSite::None);
-        cookie.set_secure(false);
+        cookie.set_secure(true);
         cookie
     }
 
