@@ -15,6 +15,7 @@ pub mod layers {
         .allow_origin(AllowOrigin::async_predicate(|origin: HeaderValue, _request_parts: &request::Parts| async move {
             let config = CorsRuntimeConfig::load_or_default().await;
             config.contains(&origin)
-        }));
+        }))
+        .allow_credentials(true);
     }
 }
