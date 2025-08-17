@@ -13,7 +13,7 @@ axum = "0.8.4"
 dotenvy = "0.15.7"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.47", features = ["rt-multi-thread"] }
-tower-http = { version = "0.6.6", features = ["auth", "trace"] }
+tower-http = { version = "0.6.6", features = ["trace", "auth", "cors"] }
 tower-layer = "0.3.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["chrono"] }
@@ -38,6 +38,7 @@ sea-orm = { version = "1.1.14", features = [
     "with-chrono",
     "with-json",
 ] }
+toml = "0.9.5"
 
 [build-dependencies]
 anyhow = "1.0.98"

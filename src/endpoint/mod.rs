@@ -1,9 +1,6 @@
 //! The API endpoints.
 
-use crate::middleware::{
-    auth::{authorize_paseto_token, layers},
-    session::validate_session_token,
-};
+use crate::middleware::{self, auth::authorize_paseto_token, session::validate_session_token};
 
 use axum::{
     Router,
@@ -26,6 +23,7 @@ pub fn route_from(mut app: Router) -> Router {
     app = route_puts(app);
     app = route_deletes(app);
     app.layer(TraceLayer::new_for_http())
+        .layer(middleware::cors::layers::CORS.to_owned())
 }
 
 fn route_gets(app: Router) -> Router {
@@ -34,7 +32,8 @@ fn route_gets(app: Router) -> Router {
         .route("/validate", get(validate::get))
         .route(
             "/auth",
-            get(auth::get).route_layer(layers::admin_password_authorization()),
+            get(auth::get)
+                .route_layer(middleware::auth::layers::ADMIN_PASSWORD_AUTHORIZATION.to_owned()),
         )
         .route(
             "/auth/validate",
@@ -57,7 +56,8 @@ fn route_posts(app: Router) -> Router {
     )
     .route(
         "/internal/update",
-        post(internal::update::post).route_layer(layers::kessoku_private_ci_authorization()),
+        post(internal::update::post)
+            .route_layer(middleware::auth::layers::KESSOKU_PRIVATE_CI_AUTHORIZATION.to_owned()),
     )
     .route(
         "/play/submit",

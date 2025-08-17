@@ -13,6 +13,7 @@ use axum::Router;
 use tokio::net::TcpListener;
 use tracing::{info, trace};
 
+pub mod config;
 pub mod env;
 pub mod trace;
 
