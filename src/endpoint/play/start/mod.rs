@@ -14,7 +14,7 @@ use crate::{
 
 use axum::{Extension, Json, extract::Query, http::StatusCode, response::IntoResponse};
 use entity::{
-    HISTORY_MAX_TRIES, PuzzleDate, PuzzleSolution, SubmitHistory, SubmitWord,
+    HISTORY_MAX_TRIES, PUZZLE_LETTERS_COUNT, PuzzleDate, PuzzleSolution, SubmitHistory, SubmitWord,
     puzzles::Model as Puzzle,
 };
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ pub struct GetParams {
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetResponse {
+    letters_count: usize,
     remaining_tries: usize,
     is_dirty: bool,
     is_completed: bool,
@@ -57,6 +58,7 @@ pub async fn get(
         Some(history) => (
             StatusCode::OK,
             Json(GetResponse {
+                letters_count: history.letters_count(),
                 remaining_tries: history.remaining_tries(),
                 is_dirty: history.is_dirty,
                 is_completed: history.is_completed,

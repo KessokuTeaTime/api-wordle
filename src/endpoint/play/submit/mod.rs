@@ -22,6 +22,7 @@ pub struct PostPayload {
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct PostResponse {
+    letters_count: usize,
     remaining_tries: usize,
     is_dirty: bool,
     is_completed: bool,
@@ -52,6 +53,7 @@ pub async fn post(
         Ok(result) => (
             StatusCode::ACCEPTED,
             Json(PostResponse {
+                letters_count: result.submit_history.letters_count(),
                 remaining_tries: result.submit_history.remaining_tries(),
                 is_dirty: result.is_dirty,
                 is_completed: result.is_completed,

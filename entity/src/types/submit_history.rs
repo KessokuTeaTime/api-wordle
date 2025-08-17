@@ -23,6 +23,10 @@ impl<const N: usize, const MAX: usize> SubmitHistory<N, MAX> {
         self.0.len()
     }
 
+    pub fn letters_count(&self) -> usize {
+        N
+    }
+
     pub fn remaining_tries(&self) -> usize {
         MAX - self.len()
     }
