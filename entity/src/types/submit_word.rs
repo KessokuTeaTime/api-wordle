@@ -147,8 +147,8 @@ impl<'de, const N: usize> Visitor<'de> for SubmitWordVisitor<N> {
             Err(err) => Err(serde::de::Error::custom(format!(
                 "value must contain exactly {}: {letters:?}, {err}",
                 match N {
-                    1 => "1 element",
-                    n => &format!("{n} elements"),
+                    1 => "1 element".into(),
+                    n => format!("{n} elements"),
                 }
             ))),
         }

@@ -61,23 +61,44 @@ pub trait Config<'de>: Deserialize<'de> + FromConfigFile {
 
 /// The services config.
 pub mod services {
+    use std::collections::HashSet;
+
     use axum::http::HeaderValue;
 
     use super::*;
 
     /// Defines a service to update.
-    #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize)]
+    #[derive(Debug, Default, Clone, PartialEq, Eq)]
     pub struct CorsConfig {
         /// The allowed origins.
-        pub origins: Vec<String>,
+        pub origins: HashSet<HeaderValue>,
+    }
+
+    impl<'de> Deserialize<'de> for CorsConfig {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            #[derive(Deserialize)]
+            struct RawCorsConfig {
+                origins: Vec<String>,
+            }
+
+            let raw = RawCorsConfig::deserialize(deserializer)?;
+            let origins = raw
+                .origins
+                .into_iter()
+                .filter_map(|s| s.parse::<HeaderValue>().ok())
+                .collect();
+
+            Ok(Self { origins })
+        }
     }
 
     impl CorsConfig {
         /// Checks whether the given origin is allowed.
         pub fn contains(&self, origin: &HeaderValue) -> bool {
-            let origins: Vec<HeaderValue> =
-                self.origins.iter().flat_map(|s| s.parse().ok()).collect();
-            origins.contains(origin)
+            self.origins.contains(origin)
         }
     }
 
