@@ -13,10 +13,15 @@ pub mod layers {
     static_lazy_lock! {
         /// The layer to handle Cross-Origin Resource Sharing (CORS).
         pub CORS: CorsLayer = CorsLayer::new()
-        .allow_origin(AllowOrigin::async_predicate(|origin: HeaderValue, _request_parts: &request::Parts| async move {
-            let config = CorsConfig::read().unwrap_or_default();
-            tracing::trace!("CORS origin check: {:?}", origin);
-            config.contains(&origin)
+        .allow_origin(AllowOrigin::async_predicate(|origin: HeaderValue, request_parts: &request::Parts| {
+            let headers = request_parts.headers.clone();
+            async move {
+                tracing::debug!("CORS async_predicate called with origin: {:?}", origin);
+                tracing::debug!("Request headers: {:?}", headers);
+                let config = CorsConfig::read().unwrap_or_default();
+                tracing::trace!("CORS origin check: {:?}", origin);
+                config.contains(&origin)
+            }
         }))
         .allow_credentials(true)
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
