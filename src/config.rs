@@ -1,64 +1,89 @@
-//! Defines runtime configs.
+//! Reads configs.
+
+use std::{fmt::Debug, path::PathBuf};
+
+use config_file::FromConfigFile;
+use serde::Deserialize;
 
 use crate::env::CONFIG_DIR;
 
-use std::{path::PathBuf, sync::LazyLock};
+/// The available config files.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConfigFile {
+    /// The CORS configuration.
+    Cors,
+}
 
-use axum::http::HeaderValue;
-use serde::{Deserialize, de::DeserializeOwned};
-
-pub trait RuntimeConfig {
-    const PATH: LazyLock<PathBuf>;
-
-    fn path() -> PathBuf {
-        let path = Self::PATH;
-        CONFIG_DIR.join(path.to_owned())
+impl ConfigFile {
+    /// The file name of the config file.
+    pub fn file_name(&self) -> &'static str {
+        match self {
+            Self::Cors => "cors.toml",
+        }
     }
 
-    async fn load() -> Self
-    where
-        Self: DeserializeOwned + Sized,
-    {
-        let config_str = tokio::fs::read_to_string(Self::path())
-            .await
-            .unwrap_or_else(|e| {
-                panic!(
-                    "failed to read config file from {}: {e}",
-                    Self::path().to_str().unwrap()
-                )
-            });
-        toml::from_str(&config_str).unwrap_or_else(|e| {
-            panic!(
-                "failed to parse config file from {}: {e}",
-                Self::path().to_str().unwrap()
-            )
-        })
+    /// The path to the config file, respecting [`CONFIG_DIR`].
+    pub fn path(&self) -> PathBuf {
+        CONFIG_DIR.join(self.file_name())
     }
+}
 
-    async fn load_or_default() -> Self
+/// A trait for configs that can be deserialized.
+pub trait Config<'de>: Deserialize<'de> + FromConfigFile {
+    /// The [`ConfigFile`] this config corresponds to.
+    fn file() -> ConfigFile;
+
+    /// Reads the config from the config file. This function wraps the error logging and returns
+    /// `None` on failure.
+    ///
+    /// See: [`FromConfigFile::from_config_file`]
+    fn read() -> Option<Self>
     where
-        Self: Default + DeserializeOwned + Sized,
+        Self: Debug,
     {
-        let config_str = tokio::fs::read_to_string(Self::path()).await.ok();
-        match config_str {
-            Some(config_str) => toml::from_str(&config_str).unwrap_or_default(),
-            None => Default::default(),
+        match Self::from_config_file(Self::file().path()) {
+            Ok(c) => {
+                tracing::trace!("read config from file {:?}: {:#?}", Self::file().path(), c);
+                Some(c)
+            }
+            Err(e) => {
+                tracing::error!(
+                    "failed to read config from file {:?}: {:?}",
+                    Self::file().path(),
+                    e
+                );
+                None
+            }
         }
     }
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct CorsRuntimeConfig {
-    pub origins: Vec<String>,
-}
+/// The services config.
+pub mod services {
+    use axum::http::HeaderValue;
 
-impl CorsRuntimeConfig {
-    pub fn contains(&self, origin: &HeaderValue) -> bool {
-        let origins: Vec<HeaderValue> = self.origins.iter().flat_map(|s| s.parse().ok()).collect();
-        origins.contains(origin)
+    use super::*;
+
+    /// Defines a service to update.
+    #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize)]
+    pub struct CorsConfig {
+        /// The allowed origins.
+        pub origins: Vec<String>,
     }
-}
 
-impl RuntimeConfig for CorsRuntimeConfig {
-    const PATH: LazyLock<PathBuf> = LazyLock::new(|| PathBuf::from("cors").with_extension("toml"));
+    impl CorsConfig {
+        /// Checks whether the given origin is allowed.
+        pub fn contains(&self, origin: &HeaderValue) -> bool {
+            let origins: Vec<HeaderValue> =
+                self.origins.iter().flat_map(|s| s.parse().ok()).collect();
+            origins.contains(origin)
+        }
+    }
+
+    impl Config<'_> for CorsConfig {
+        fn file() -> ConfigFile {
+            ConfigFile::Cors
+        }
+    }
 }

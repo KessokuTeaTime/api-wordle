@@ -2,17 +2,23 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
+/// The match result for each letter in a submitted word.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(clippy::exhaustive_enums)]
 pub enum Matches {
+    /// The letter matches exactly.
     #[serde(rename = "+")]
     Yes,
+    /// The letter is in the word but in a different position.
     #[serde(rename = "?")]
     Partially,
+    /// The letter does not match.
     #[serde(rename = "-")]
     No,
 }
 
 impl Matches {
+    /// Converts the `Matches` enum to its string representation.
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::Yes => "+",

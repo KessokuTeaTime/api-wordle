@@ -66,6 +66,6 @@ pub async fn validate_session_token(
         None => {
             info!("failed to validate {addr}: token not found");
         }
-    };
+    }
     next.run(request).await
 }

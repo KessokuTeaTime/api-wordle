@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use axum::{
     extract::{ConnectInfo, Request},
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::{IntoResponse as _, Response},
 };
 use axum_extra::{
     TypedHeader,
@@ -22,25 +22,16 @@ use tracing::info;
 
 /// Router layers for authorization.
 pub mod layers {
-    use crate::env::{ADMIN_PASSWORD, KTT_API_PASSWORD, KTT_API_USERNAME};
+    use crate::env::{KTT_API_PASSWORD, KTT_API_USERNAME};
 
     use api_framework::static_lazy_lock;
     use tower_http::auth::AddAuthorizationLayer;
 
     static_lazy_lock! {
+        /// The layer that authorizes requests with the KessokuTeaTime private CI key in Base 64 format.
+        ///
+        /// See: [`KTT_API_USERNAME`], [`KTT_API_PASSWORD`], [`AddAuthorizationLayer`]
         pub KESSOKU_PRIVATE_CI_AUTHORIZATION: AddAuthorizationLayer = AddAuthorizationLayer::basic(&KTT_API_USERNAME, &KTT_API_PASSWORD);
-        r#"
-        The layer that authorizes requests with the KessokuTeaTime private CI key in Base 64 format.
-
-        See: [`KTT_API_USERNAME`], [`KTT_API_PASSWORD`], [`AddAuthorizationLayer`]
-        "#
-    }
-
-    static_lazy_lock! {
-        pub ADMIN_PASSWORD_AUTHORIZATION: AddAuthorizationLayer = AddAuthorizationLayer::bearer(&hex::encode(*ADMIN_PASSWORD));
-        r#"
-        The layer that authorizes requests with the hashed admin password.
-        "#
     }
 }
 

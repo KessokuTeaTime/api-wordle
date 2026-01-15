@@ -11,6 +11,7 @@ use axum_extra::extract::{
     cookie::{Cookie, SameSite},
 };
 
+/// The client requests a session token.
 pub async fn get(jar: CookieJar, session: Option<Extension<SessionToken>>) -> impl IntoResponse {
     fn setup_cookie(session: String) -> Cookie<'static> {
         let mut cookie = Cookie::new(cookies::SESSION_TOKEN, session);

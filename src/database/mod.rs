@@ -5,13 +5,14 @@ use std::time::Duration;
 use crate::env::DATABASE_URL;
 
 use api_framework::static_lazy_lock;
-use migration::{Migrator, MigratorTrait};
+use migration::{Migrator, MigratorTrait as _};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use tracing::log::LevelFilter;
 
 pub mod tables;
 
 static_lazy_lock! {
+    /// The connect options for PostgreSQL.
     pub OPTIONS: ConnectOptions = {
         let mut options = ConnectOptions::new(&*DATABASE_URL);
         options.max_connections(100)
@@ -21,7 +22,6 @@ static_lazy_lock! {
             .sqlx_logging_level(LevelFilter::Trace);
         options
     };
-    "The connect options for PostgreSQL."
 }
 
 /// Acquires a database connection, or runs an expression.

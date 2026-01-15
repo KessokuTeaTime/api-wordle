@@ -10,25 +10,34 @@ use axum::{Extension, Json, extract::Query, http::StatusCode, response::IntoResp
 use entity::{PuzzleDate, PuzzleSolution, SubmitWord};
 use serde::{Deserialize, Serialize};
 
+/// The parameters for the post request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostParams {
-    date: String,
+    /// The date of the puzzle.
+    pub date: String,
 }
 
+/// The payload for the post request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostPayload {
-    answer: String,
+    /// The answer being submitted.
+    pub answer: String,
 }
 
+/// The response for the post request.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct PostResponse {
-    letters_count: usize,
-    remaining_tries: usize,
-    is_dirty: bool,
-    is_completed: bool,
-    history: Vec<SubmitWord>,
+    /// The number of letters in the word.
+    pub letters_count: usize,
+    /// The number of remaining tries.
+    pub remaining_tries: usize,
+    /// Whether the puzzle has been completed.
+    pub is_completed: bool,
+    /// The history of submitted words.
+    pub history: Vec<SubmitWord>,
 }
 
+/// The client submits a word to solve the puzzle.
 pub async fn post(
     session: Option<Extension<SessionToken>>,
     Query(params): Query<PostParams>,
@@ -55,7 +64,6 @@ pub async fn post(
             Json(PostResponse {
                 letters_count: result.submit_history.letters_count(),
                 remaining_tries: result.submit_history.remaining_tries(),
-                is_dirty: result.is_dirty,
                 is_completed: result.is_completed,
                 history: result.submit_history.into_vec(),
             }),

@@ -4,7 +4,7 @@
 
 use std::env;
 
-use migration::{Migrator, MigratorTrait};
+use migration::{Migrator, MigratorTrait as _};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 
 mod submit_history;

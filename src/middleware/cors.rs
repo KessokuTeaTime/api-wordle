@@ -8,12 +8,13 @@ pub mod layers {
     use axum::http::{HeaderValue, header, method::Method, request};
     use tower_http::cors::{AllowOrigin, CorsLayer};
 
-    use crate::config::{CorsRuntimeConfig, RuntimeConfig};
+    use crate::config::{Config as _, services::CorsConfig};
 
     static_lazy_lock! {
+        /// The layer to handle Cross-Origin Resource Sharing (CORS).
         pub CORS: CorsLayer = CorsLayer::new()
         .allow_origin(AllowOrigin::async_predicate(|origin: HeaderValue, _request_parts: &request::Parts| async move {
-            let config = CorsRuntimeConfig::load_or_default().await;
+            let config = CorsConfig::read().unwrap_or_default();
             config.contains(&origin)
         }))
         .allow_credentials(true)

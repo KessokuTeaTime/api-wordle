@@ -3,17 +3,22 @@ use std::fmt::{self, Display};
 use sea_orm::{DeriveValueType, TryFromU64, prelude::Date};
 use serde::{Deserialize, Serialize};
 
+/// A valid puzzle date.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, DeriveValueType)]
 pub struct PuzzleDate(pub Date);
 
 impl PuzzleDate {
+    /// The minimum valid date: 1970-01-01.
     pub const MIN_DATE: Date = Date::from_ymd_opt(1970, 1, 1).unwrap();
+    /// The minimum valid puzzle date.
     pub const MIN: Self = Self(Self::MIN_DATE);
 
+    /// Creates a new [`PuzzleDate`].
     pub fn new(date: Date) -> Self {
         Self(date)
     }
 
+    /// Returns the inner [`Date`].
     pub fn inner(&self) -> Date {
         self.0
     }
@@ -46,9 +51,13 @@ impl TryFromU64 for PuzzleDate {
     }
 }
 
+/// The errors that can occur when parsing a [`PuzzleDate`].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum PuzzleDateError {
+    /// The date format is invalid.
     InvalidFormat,
+    /// The date is earlier than [`PuzzleDate::MIN`].
     TooEarly,
 }
 

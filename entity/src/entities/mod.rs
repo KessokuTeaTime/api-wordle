@@ -6,5 +6,8 @@ pub mod histories;
 pub mod puzzles;
 pub mod sessions;
 
+/// The number of letters in the puzzle.
 pub const PUZZLE_LETTERS_COUNT: usize = 5;
+
+/// The maximum number of tries allowed for a puzzle.
 pub const HISTORY_MAX_TRIES: usize = 6;

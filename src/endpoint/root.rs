@@ -1,32 +1,43 @@
 //! Endpoint root.
 
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
-use chrono::Datelike;
+use chrono::Datelike as _;
 use entity::puzzles::Model as Puzzle;
 use entity::{PuzzleDate, PuzzleSolution, puzzles::ResultPuzzle};
 use serde::{Deserialize, Serialize};
 
-use crate::database::tables::puzzles::{delete_solution, update_solution};
 use crate::database::{
     self,
     tables::puzzles::{get_puzzle, get_puzzles, insert_solution},
 };
 
+/// The parameters for the get request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GetParams {
-    date: Option<String>,
-    generate_if_missing: Option<bool>,
+    /// The date of the puzzle to get.
+    pub date: Option<String>,
+    /// Whether to generate a new puzzle if missing.
+    pub generate_if_missing: Option<bool>,
 }
 
+/// The response for a single puzzle get request.
 #[derive(Debug, Clone, Serialize)]
 pub struct GetResponsePuzzle(ResultPuzzle);
 
+/// The response for multiple puzzles get request.
 #[derive(Debug, Clone, Serialize)]
 pub struct GetResponsePuzzles {
-    count: usize,
-    puzzles: Vec<ResultPuzzle>,
+    /// The number of available puzzles.
+    pub count: usize,
+    /// The puzzles.
+    pub puzzles: Vec<ResultPuzzle>,
 }
 
+/// The client gets puzzle information.
+///
+/// # Panics
+///
+/// Panics if cannot get a random word from [`random_word`].
 pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
     let db = database::acquire_or_response!();
 
@@ -74,7 +85,7 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
             (StatusCode::NOT_FOUND).into_response()
         }
     } else {
-        let puzzles: Vec<ResultPuzzle> = get_puzzles(&db, false)
+        let puzzles: Vec<ResultPuzzle> = get_puzzles(&db)
             .await
             .into_iter()
             .map(Puzzle::to_result_puzzle)
@@ -90,17 +101,23 @@ pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
     }
 }
 
+/// The parameters for the post request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostParams {
-    ignores_conflict: Option<bool>,
+    /// Whether to ignore conflict if the puzzle already exists.
+    pub ignores_conflict: Option<bool>,
 }
 
+/// The payload for the post request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostPayload {
-    date: String,
-    solution: String,
+    /// The date of the puzzle.
+    pub date: String,
+    /// The solution of the puzzle.
+    pub solution: String,
 }
 
+/// The client posted a puzzle.
 pub async fn post(
     Query(params): Query<PostParams>,
     Json(payload): Json<PostPayload>,
@@ -116,61 +133,13 @@ pub async fn post(
     };
 
     if !params.ignores_conflict.unwrap_or(false) && get_puzzle(&db, &date).await.is_some() {
-        // There is an existing puzzle and we shouldn't proceed
+        // there is an existing puzzle and we shouldn't proceed
         (StatusCode::CONFLICT).into_response()
     } else {
-        // There isn't any existing puzzles
+        // there isn't any existing puzzles
         match insert_solution(&db, &date, &solution).await {
             Ok(_) => (StatusCode::CREATED).into_response(),
             Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PutPayload {
-    date: String,
-    solution: String,
-}
-
-pub async fn put(Json(payload): Json<PutPayload>) -> impl IntoResponse {
-    let db = database::acquire_or_response!();
-
-    let (date, solution) = match (
-        PuzzleDate::try_from(&payload.date[..]),
-        PuzzleSolution::try_from(&payload.solution[..]),
-    ) {
-        (Ok(date), Ok(solution)) => (date, solution),
-        _ => return (StatusCode::BAD_REQUEST).into_response(),
-    };
-
-    match update_solution(&db, &date, &solution).await {
-        Ok(_) => (StatusCode::CREATED).into_response(),
-        Err(_) => (StatusCode::NOT_FOUND).into_response(),
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct DeleteParams {
-    date: String,
-}
-
-pub async fn delete(Query(params): Query<DeleteParams>) -> impl IntoResponse {
-    let db = database::acquire_or_response!();
-
-    let date = match PuzzleDate::try_from(&params.date[..]) {
-        Ok(date) => date,
-        Err(err) => return (StatusCode::BAD_REQUEST, err.to_string()).into_response(),
-    };
-
-    if get_puzzle(&db, &date).await.is_some() {
-        // There is an existing puzzle
-        match delete_solution(&db, &date).await {
-            Ok(_) => (StatusCode::NO_CONTENT).into_response(),
-            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-        }
-    } else {
-        // There isn't any existing puzzles
-        (StatusCode::NOT_FOUND).into_response()
     }
 }

@@ -3,9 +3,14 @@
 use chrono::Utc;
 use entity::{prelude::*, sessions};
 use migration::OnConflict;
-use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait};
+use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait as _};
 use tracing::{error, info};
 
+/// Inserts or updates a session in the database.
+///
+/// # Errors
+///
+/// Returns [`DbErr`] if the insertion fails.
 pub async fn insert_or_update_session(db: &DatabaseConnection, session: &str) -> Result<(), DbErr> {
     info!("inserting or updating session {session}…");
     let now = Utc::now().naive_utc();
@@ -35,6 +40,11 @@ pub async fn insert_or_update_session(db: &DatabaseConnection, session: &str) ->
     }
 }
 
+/// Deletes a session from the database.
+///
+/// # Errors
+///
+/// Returns [`DbErr`] if the deletion fails.
 pub async fn delete_session(db: &DatabaseConnection, session: &str) -> Result<(), DbErr> {
     match Sessions::delete_by_id(session.to_owned()).exec(db).await {
         Ok(_) => {

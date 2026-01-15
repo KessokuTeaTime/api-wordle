@@ -1,3 +1,5 @@
+//! The entity module.
+
 mod entities;
 mod types;
 

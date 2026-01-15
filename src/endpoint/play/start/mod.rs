@@ -19,20 +19,31 @@ use entity::{
 };
 use serde::{Deserialize, Serialize};
 
+/// The parameters for the get request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GetParams {
-    date: String,
+    /// The date of the puzzle in `YYYY-MM-DD` format.
+    pub date: String,
 }
 
+/// The response for the get request.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetResponse {
-    letters_count: usize,
-    remaining_tries: usize,
-    is_dirty: bool,
-    is_completed: bool,
-    history: Vec<SubmitWord>,
+    /// The number of letters in the word.
+    pub letters_count: usize,
+    /// The number of remaining tries.
+    pub remaining_tries: usize,
+    /// Whether the puzzle has been completed.
+    pub is_completed: bool,
+    /// The history of submitted words.
+    pub history: Vec<SubmitWord>,
 }
 
+/// The client requests to start a puzzle session.
+///
+/// # Panics
+///
+/// Panics if cannot get a random word from [`random_word`].
 pub async fn get(
     session: Option<Extension<SessionToken>>,
     Query(params): Query<GetParams>,
@@ -60,7 +71,6 @@ pub async fn get(
             Json(GetResponse {
                 letters_count: history.letters_count(),
                 remaining_tries: history.remaining_tries(),
-                is_dirty: history.is_dirty,
                 is_completed: history.is_completed,
                 history: history
                     .submit_history
@@ -98,7 +108,6 @@ pub async fn get(
                     Json(GetResponse {
                         letters_count: PUZZLE_LETTERS_COUNT,
                         remaining_tries: HISTORY_MAX_TRIES,
-                        is_dirty: false,
                         is_completed: false,
                         ..Default::default()
                     }),

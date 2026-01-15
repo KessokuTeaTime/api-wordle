@@ -5,21 +5,29 @@ use std::{collections::HashMap, fmt::Display};
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{SeqAccess, Visitor},
-    ser::SerializeSeq,
+    ser::SerializeSeq as _,
 };
 
+/// A submitted word consisting of letters with match statuses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SubmitWord<const N: usize = PUZZLE_LETTERS_COUNT>(pub [SubmitLetter; N]);
 
 impl<const N: usize> SubmitWord<N> {
+    /// The separator used in the string representation.
     pub const SEPARATOR: &str = ",";
 
+    /// Creates a new [`SubmitWord`] from the given letter array.
     pub fn new(letters: [SubmitLetter; N]) -> Self {
         Self(letters)
     }
 
+    /// Tints the answer against the solution to produce match statuses.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the lengths of `answer` and `solution` do not equal `N`, which should never happen.
     pub fn tint(answer: &PuzzleSolution<N>, solution: &PuzzleSolution<N>) -> Self {
-        // Tint matches letters
+        // tint matched letters
         let mut unparsed_map = solution.inner().iter().fold(HashMap::new(), |mut map, c| {
             *map.entry(*c).or_insert(0) += 1;
             map
@@ -31,17 +39,15 @@ impl<const N: usize> SubmitWord<N> {
             .map(|(index, &c)| {
                 (
                     c,
-                    if solution.inner()[index] == c {
+                    (solution.inner()[index] == c).then(|| {
                         unparsed_map.entry(c).and_modify(|count| *count -= 1);
-                        Some(Matches::Yes)
-                    } else {
-                        None
-                    },
+                        Matches::Yes
+                    }),
                 )
             })
             .collect();
 
-        // Tint partially matches and unmatched letters
+        // tint partially matched and unmatched letters
         let letters: Vec<SubmitLetter> = letters
             .iter()
             .map(|&(c, matches)| match matches {
@@ -64,22 +70,27 @@ impl<const N: usize> SubmitWord<N> {
         Self(letters[..].try_into().unwrap())
     }
 
+    /// Returns the length of the word.
     pub fn len(&self) -> usize {
         N
     }
 
+    /// Whether the word is empty.
     pub fn is_empty(&self) -> bool {
         false
     }
 
+    /// Whether all letters in the word match the solution.
     pub fn all_matches(&self) -> bool {
         self.0.iter().all(|l| l.matches == Matches::Yes)
     }
 
+    /// Returns a vector of references to the letters in the word.
     pub fn to_vec(&self) -> Vec<&SubmitLetter> {
         self.0.iter().collect()
     }
 
+    /// Consumes the word and returns a vector of the letters.
     pub fn into_vec(self) -> Vec<SubmitLetter> {
         self.0.into_iter().collect()
     }
@@ -151,7 +162,7 @@ mod tests {
     use serde_test::{Token, assert_tokens};
 
     #[test]
-    fn test_serde() {
+    fn serde() {
         let word = SubmitWord([
             SubmitLetter::new('R', Matches::Yes),
             SubmitLetter::new('U', Matches::No),

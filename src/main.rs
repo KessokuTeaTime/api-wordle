@@ -1,7 +1,7 @@
 //! KessokuTeaTime API backend for the wordle game.
 
 use crate::env::{
-    DATABASE_URL, PORT,
+    DATABASE_URL, PORT, TRACING_STDERR_LEVEL,
     info::{BUILD_TIMESTAMP, GIT_HASH},
 };
 
@@ -11,7 +11,6 @@ use anyhow::{Error, anyhow};
 use api_framework::{shutdown, static_lazy_lock};
 use axum::Router;
 use tokio::net::TcpListener;
-use tracing::{info, trace};
 
 pub mod config;
 pub mod env;
@@ -29,22 +28,23 @@ static_lazy_lock! {
 async fn main() {
     env::setup();
     trace::setup().unwrap();
-    trace!("loaded environment: {:#?}", std::env::vars());
+    tracing::info!("stderr is tracing on level {:?}", *TRACING_STDERR_LEVEL);
+    tracing::trace!("loaded environment: {:#?}", std::env::vars());
 
     database::setup().await.unwrap();
-    trace!("set up database at {}", *DATABASE_URL);
+    tracing::trace!("set up database at {}", *DATABASE_URL);
 
-    info!(
+    tracing::info!(
         "binary {} version {}",
         clap::crate_name!(),
         clap::crate_version!()
     );
-    info!("compiled from commit {GIT_HASH} at {BUILD_TIMESTAMP}");
-    info!("starting server on port {}…", *PORT);
+    tracing::info!("compiled from commit {GIT_HASH} at {BUILD_TIMESTAMP}");
+    tracing::info!("starting server on port {}…", *PORT);
 
     serve().await.unwrap();
 
-    info!("stopping…");
+    tracing::info!("stopping…");
 }
 
 async fn serve() -> Result<(), Error> {

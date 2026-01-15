@@ -5,13 +5,12 @@ use crate::middleware::{self, auth::authorize_paseto_token, session::validate_se
 use axum::{
     Router,
     middleware::from_fn,
-    routing::{delete, get, post, put},
+    routing::{get, post},
 };
 use tower_http::trace::TraceLayer;
 
-pub mod auth;
 pub mod dates;
-pub mod internal;
+pub mod health;
 pub mod play;
 pub mod root;
 pub mod validate;
@@ -20,25 +19,15 @@ pub mod validate;
 pub fn route_from(mut app: Router) -> Router {
     app = route_gets(app);
     app = route_posts(app);
-    app = route_puts(app);
-    app = route_deletes(app);
     app.layer(TraceLayer::new_for_http())
         .layer(middleware::cors::layers::CORS.to_owned())
 }
 
 fn route_gets(app: Router) -> Router {
     app.route("/", get(root::get))
+        .route("/health", get(health::get))
         .route("/dates", get(dates::get))
         .route("/validate", get(validate::get))
-        .route(
-            "/auth",
-            get(auth::get)
-                .route_layer(middleware::auth::layers::ADMIN_PASSWORD_AUTHORIZATION.to_owned()),
-        )
-        .route(
-            "/auth/validate",
-            get(auth::validate::get).route_layer(from_fn(authorize_paseto_token)),
-        )
         .route(
             "/play/session",
             get(play::session::get).route_layer(from_fn(validate_session_token)),
@@ -55,26 +44,7 @@ fn route_posts(app: Router) -> Router {
         post(root::post).route_layer(from_fn(authorize_paseto_token)),
     )
     .route(
-        "/internal/update",
-        post(internal::update::post)
-            .route_layer(middleware::auth::layers::KESSOKU_PRIVATE_CI_AUTHORIZATION.to_owned()),
-    )
-    .route(
         "/play/submit",
         post(play::submit::post).route_layer(from_fn(validate_session_token)),
-    )
-}
-
-fn route_puts(app: Router) -> Router {
-    app.route(
-        "/",
-        put(root::put).route_layer(from_fn(authorize_paseto_token)),
-    )
-}
-
-fn route_deletes(app: Router) -> Router {
-    app.route(
-        "/",
-        delete(root::delete).route_layer(from_fn(authorize_paseto_token)),
     )
 }

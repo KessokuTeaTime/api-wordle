@@ -6,12 +6,15 @@ use axum::{extract::Query, http::StatusCode, response::IntoResponse};
 use serde::Deserialize;
 use tracing::info;
 
+/// The parameters for the get request.
 #[derive(Debug, Clone, Deserialize)]
-pub struct Params {
-    word: String,
+pub struct GetParams {
+    /// The word to validate.
+    pub word: String,
 }
 
-pub async fn get(Query(params): Query<Params>) -> impl IntoResponse {
+/// The client validates a word.
+pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
     info!("validating word {}…", params.word);
 
     if WORDS.contains(&&params.word[..]) {

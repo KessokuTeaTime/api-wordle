@@ -3,7 +3,9 @@ use entity::{
     Matches, PuzzleDate, PuzzleSolution, SubmitLetter, SubmitWord, histories, prelude::*, puzzles,
     sessions,
 };
-use sea_orm::{ActiveModelTrait, ActiveValue, DatabaseConnection, EntityTrait, TransactionTrait};
+use sea_orm::{
+    ActiveModelTrait as _, ActiveValue, DatabaseConnection, EntityTrait as _, TransactionTrait as _,
+};
 
 #[tokio::test]
 async fn test() {
@@ -23,8 +25,7 @@ async fn test() {
 
     assert_eq!(history.date, date);
     assert_eq!(history.session, session);
-    assert_eq!(history.original_solution, solution);
-    assert!(!history.is_dirty);
+    assert_eq!(history.solution, solution);
 
     let mut submit_history = history.submit_history.unwrap_or_default();
     submit_history
@@ -60,7 +61,6 @@ async fn seed_data(db: &DatabaseConnection) {
     let active_puzzle = puzzles::ActiveModel {
         date: ActiveValue::Set(date.clone()),
         solution: ActiveValue::Set(solution.clone()),
-        ..Default::default()
     };
 
     let active_session = sessions::ActiveModel {
@@ -73,7 +73,7 @@ async fn seed_data(db: &DatabaseConnection) {
         date: ActiveValue::Set(date.clone()),
         session: ActiveValue::Set(session.clone()),
         submit_history: ActiveValue::Set(None),
-        original_solution: ActiveValue::Set(solution.to_owned()),
+        solution: ActiveValue::Set(solution.to_owned()),
         uploaded_at: ActiveValue::Set(date_time),
         ..Default::default()
     };

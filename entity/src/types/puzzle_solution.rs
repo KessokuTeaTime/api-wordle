@@ -9,18 +9,22 @@ use sea_orm::{
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor};
 
+/// A puzzle solution consisting of exactly `N` ASCII alphabetic letters.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PuzzleSolution<const N: usize = PUZZLE_LETTERS_COUNT>(pub [char; N]);
 
 impl<const N: usize> PuzzleSolution<N> {
+    /// Returns the inner array of characters.
     pub fn inner(&self) -> &[char; N] {
         &self.0
     }
 
+    /// Returns the length of the puzzle solution.
     pub fn len(&self) -> usize {
         N
     }
 
+    /// Whether the puzzle solution is empty.
     pub fn is_empty(&self) -> bool {
         false
     }
@@ -127,9 +131,18 @@ impl<const N: usize> Visitor<'_> for PuzzleSolutionVisitor<N> {
     }
 }
 
+/// The errors that can occur when parsing a [`PuzzleSolution`].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum PuzzleWordError {
-    TooFewOrTooManyLetters { actual: usize, expected: usize },
+    /// The puzzle solution has too few or too many letters.
+    TooFewOrTooManyLetters {
+        /// The actual number of letters.
+        actual: usize,
+        /// The expected number of letters.
+        expected: usize,
+    },
+    /// The puzzle solution contains non ASCII alphabetic letters.
     ContainsNonAsciiAlphabeticLetters,
 }
 

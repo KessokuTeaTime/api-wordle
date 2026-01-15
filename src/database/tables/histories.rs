@@ -7,11 +7,10 @@ use entity::{
     prelude::*,
 };
 use migration::OnConflict;
-use sea_orm::{
-    ActiveValue, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect,
-};
+use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait as _, QuerySelect as _};
 use tracing::{error, info, warn};
 
+/// Gets a history by date and session.
 pub async fn get_history(
     db: &DatabaseConnection,
     date: &PuzzleDate,
@@ -31,6 +30,11 @@ pub async fn get_history(
     history
 }
 
+/// Creates a new history.
+///
+/// # Errors
+///
+/// Returns [`DbErr`] if the insertion fails.
 pub async fn create_history(
     db: &DatabaseConnection,
     date: &PuzzleDate,
@@ -41,8 +45,7 @@ pub async fn create_history(
     let active_history = histories::ActiveModel {
         date: ActiveValue::Set(date.to_owned()),
         session: ActiveValue::Set(session.to_owned()),
-        original_solution: ActiveValue::Set(solution.to_owned()),
-        is_dirty: ActiveValue::Set(false),
+        solution: ActiveValue::Set(solution.to_owned()),
         uploaded_at: ActiveValue::Set(Utc::now().naive_utc()),
         ..Default::default()
     };
@@ -61,13 +64,20 @@ pub async fn create_history(
     }
 }
 
+/// The result for submitting a word to history.
 #[derive(Debug, Clone)]
 pub struct SubmitResult {
+    /// The updated submit history.
     pub submit_history: SubmitHistory,
-    pub is_dirty: bool,
+    /// Whether the puzzle has been completed.
     pub is_completed: bool,
 }
 
+/// Submits a word to history.
+///
+/// # Errors
+///
+/// Returns [`DbErr`] if the submission fails.
 pub async fn submit_to_history(
     db: &DatabaseConnection,
     date: &PuzzleDate,
@@ -76,31 +86,29 @@ pub async fn submit_to_history(
 ) -> Result<SubmitResult, DbErr> {
     info!("submitting {answer} to history at {date} with {session}…");
 
-    let (mut submit_history, is_dirty, solution) =
+    let (mut submit_history, solution) =
         match Histories::find_by_id((date.to_owned(), session.to_owned()))
             .select_only()
             .columns([
                 histories::Column::SubmitHistory,
-                histories::Column::IsDirty,
                 histories::Column::IsCompleted,
-                histories::Column::OriginalSolution,
+                histories::Column::Solution,
             ])
-            .into_tuple::<(Option<SubmitHistory>, bool, bool, PuzzleSolution)>()
+            .into_tuple::<(Option<SubmitHistory>, bool, PuzzleSolution)>()
             .one(db)
             .await
             .ok()
             .flatten()
         {
-            Some((submit_history, is_dirty, true, _)) => {
+            Some((submit_history, true, _)) => {
                 warn!("history is completed for {date} with session {session}!");
                 return Ok(SubmitResult {
                     submit_history: submit_history.unwrap_or_default(),
-                    is_dirty,
                     is_completed: true,
                 });
             }
-            Some((submit_history, is_dirty, false, solution)) => {
-                (submit_history.unwrap_or_default(), is_dirty, solution)
+            Some((submit_history, false, solution)) => {
+                (submit_history.unwrap_or_default(), solution)
             }
             None => {
                 error!("no history found for {date} with session {session}!");
@@ -117,8 +125,7 @@ pub async fn submit_to_history(
         date: ActiveValue::Unchanged(date.to_owned()),
         session: ActiveValue::Unchanged(session.to_owned()),
         submit_history: ActiveValue::Set(Some(submit_history.clone())),
-        original_solution: ActiveValue::Unchanged(solution),
-        is_dirty: ActiveValue::Unchanged(false),
+        solution: ActiveValue::Unchanged(solution),
         is_completed: ActiveValue::Set(word.all_matches()),
         uploaded_at: ActiveValue::Unchanged(Utc::now().naive_utc()),
     };
@@ -139,7 +146,6 @@ pub async fn submit_to_history(
             info!("submitted {answer} to history at {date} with session {session}");
             Ok(SubmitResult {
                 submit_history,
-                is_dirty,
                 is_completed: word.all_matches(),
             })
         }
@@ -148,44 +154,4 @@ pub async fn submit_to_history(
             Err(err)
         }
     }
-}
-
-pub async fn mark_dirty(db: &DatabaseConnection, date: &PuzzleDate, solution: &PuzzleSolution) {
-    let h = Histories::find()
-        .filter(histories::Column::Date.eq(date.to_owned()))
-        .all(db)
-        .await
-        .unwrap_or_default();
-
-    if h.is_empty() {
-        return;
-    }
-
-    info!(
-        "marking dirty for {} at {date} with solution {solution}",
-        match h.len() {
-            1 => "1 history",
-            count => &format!("{count} histories"),
-        }
-    );
-
-    let active_histories: Vec<histories::ActiveModel> = h
-        .into_iter()
-        .map(|history| histories::ActiveModel {
-            date: ActiveValue::Unchanged(date.to_owned()),
-            session: ActiveValue::Unchanged(history.session),
-            is_dirty: ActiveValue::Set(history.original_solution == *solution),
-            ..Default::default()
-        })
-        .collect();
-
-    Histories::insert_many(active_histories)
-        .on_conflict(
-            OnConflict::new()
-                .update_column(histories::Column::IsDirty)
-                .to_owned(),
-        )
-        .exec(db)
-        .await
-        .ok();
 }

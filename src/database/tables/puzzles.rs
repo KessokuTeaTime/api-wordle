@@ -3,21 +3,14 @@
 use entity::puzzles::Model as Puzzle;
 use entity::{PuzzleDate, PuzzleSolution, prelude::*, puzzles};
 use migration::OnConflict;
-use sea_orm::{
-    ActiveValue, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter,
-    QuerySelect,
-};
+use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait as _, QuerySelect as _};
 use tracing::{error, info, trace, warn};
 
-pub async fn get_dates(db: &DatabaseConnection, includes_deleted: bool) -> Vec<PuzzleDate> {
+/// Gets all puzzle dates.
+pub async fn get_dates(db: &DatabaseConnection) -> Vec<PuzzleDate> {
     info!("getting dates…");
-    let query = if includes_deleted {
-        Puzzles::find()
-    } else {
-        Puzzles::find().filter(Condition::all().add(puzzles::Column::IsDeleted.eq(false)))
-    };
 
-    let dates = query
+    let dates = Puzzles::find()
         .select_only()
         .column(puzzles::Column::Date)
         .into_tuple()
@@ -29,27 +22,19 @@ pub async fn get_dates(db: &DatabaseConnection, includes_deleted: bool) -> Vec<P
     dates
 }
 
-pub async fn get_puzzles(db: &DatabaseConnection, includes_deleted: bool) -> Vec<Puzzle> {
+/// Gets all puzzles.
+pub async fn get_puzzles(db: &DatabaseConnection) -> Vec<Puzzle> {
     info!("getting puzzles…");
-    let query = if includes_deleted {
-        Puzzles::find()
-    } else {
-        Puzzles::find().filter(Condition::all().add(puzzles::Column::IsDeleted.eq(false)))
-    };
-    let p = query.all(db).await.unwrap_or(Vec::new());
+    let p = Puzzles::find().all(db).await.unwrap_or(Vec::new());
 
-    if includes_deleted {
-        trace!("got active and deleted puzzles: {p:?}");
-    } else {
-        trace!("got active puzzles: {p:?}");
-    }
+    trace!("got active puzzles: {p:?}");
     p
 }
 
+/// Gets a puzzle by date.
 pub async fn get_puzzle(db: &DatabaseConnection, date: &PuzzleDate) -> Option<Puzzle> {
     info!("getting puzzle for {date}…");
     let puzzle = Puzzles::find_by_id(date.clone())
-        .filter(Condition::all().add(puzzles::Column::IsDeleted.eq(false)))
         .one(db)
         .await
         .ok()
@@ -62,6 +47,11 @@ pub async fn get_puzzle(db: &DatabaseConnection, date: &PuzzleDate) -> Option<Pu
     puzzle
 }
 
+/// Inserts a puzzle solution for a given date.
+///
+/// # Errors
+///
+/// Returns [`DbErr`] if the insertion fails.
 pub async fn insert_solution(
     db: &DatabaseConnection,
     date: &PuzzleDate,
@@ -72,13 +62,12 @@ pub async fn insert_solution(
     let active_puzzle = puzzles::ActiveModel {
         date: ActiveValue::Set(date.clone()),
         solution: ActiveValue::Set(solution.clone()),
-        is_deleted: ActiveValue::Set(false),
     };
 
     match Puzzles::insert(active_puzzle)
         .on_conflict(
             OnConflict::column(puzzles::Column::Date)
-                .update_columns([puzzles::Column::Solution, puzzles::Column::IsDeleted])
+                .update_columns([puzzles::Column::Solution])
                 .to_owned(),
         )
         .exec(db)
@@ -90,42 +79,6 @@ pub async fn insert_solution(
         }
         Err(err) => {
             error!("failed to insert solution {solution} for {date}: {err}");
-            Err(err)
-        }
-    }
-}
-
-pub async fn update_solution(
-    db: &DatabaseConnection,
-    date: &PuzzleDate,
-    solution: &PuzzleSolution,
-) -> Result<(), DbErr> {
-    let active_puzzle = puzzles::ActiveModel {
-        date: ActiveValue::Set(date.clone()),
-        solution: ActiveValue::Set(solution.clone()),
-        is_deleted: ActiveValue::Set(false),
-    };
-
-    match Puzzles::update(active_puzzle).exec(db).await {
-        Ok(_) => {
-            info!("updated solution {solution} for {date}");
-            Ok(())
-        }
-        Err(err) => {
-            error!("failed to update solution {solution} for {date}: {err}");
-            Err(err)
-        }
-    }
-}
-
-pub async fn delete_solution(db: &DatabaseConnection, date: &PuzzleDate) -> Result<(), DbErr> {
-    match Puzzles::delete_by_id(date.clone()).exec(db).await {
-        Ok(_) => {
-            info!("deleted solution for {date}");
-            Ok(())
-        }
-        Err(err) => {
-            error!("failed to delete solution for {date}: {err}");
             Err(err)
         }
     }
