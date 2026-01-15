@@ -14,7 +14,6 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(date(Puzzles::Date).primary_key())
                     .col(string(Puzzles::Solution))
-                    .col(boolean(Puzzles::IsDeleted).default(false))
                     .to_owned(),
             )
             .await?;
@@ -41,8 +40,8 @@ impl MigrationTrait for Migration {
                     .col(date(Histories::Date))
                     .col(string(Histories::Session))
                     .col(json_binary_null(Histories::SubmitHistory))
-                    .col(string(Histories::OriginalSolution))
-                    .col(boolean(Histories::IsDirty).default(false))
+                    .col(string(Histories::Solution))
+                    .col(boolean(Histories::IsCompleted).default(false))
                     .col(date_time(Histories::UploadDate))
                     .primary_key(Index::create().col(Histories::Date).col(Histories::Session))
                     .foreign_key(
@@ -93,7 +92,6 @@ enum Puzzles {
     Table,
     Date,
     Solution,
-    IsDeleted,
 }
 
 #[derive(DeriveIden)]
@@ -112,8 +110,8 @@ enum Histories {
     Date,
     Session,
     SubmitHistory,
-    OriginalSolution,
-    IsDirty,
+    Solution,
+    IsCompleted,
     #[sea_orm(iden = "uploaded_at")]
     UploadDate,
 }
