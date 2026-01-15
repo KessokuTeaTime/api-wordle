@@ -20,7 +20,7 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-COPY --from=rust_builder /app/target/release/api-main .
+COPY --from=rust_builder /app/target/release/api-wordle .
 RUN apt-get update && \
     apt-get install -y ca-certificates curl gnupg lsb-release && \
     install -m 0755 -d /etc/apt/keyrings && \
