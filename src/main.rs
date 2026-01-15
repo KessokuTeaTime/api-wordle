@@ -14,6 +14,7 @@ use tokio::net::TcpListener;
 
 pub mod config;
 pub mod env;
+pub mod sha256;
 pub mod trace;
 
 pub mod database;

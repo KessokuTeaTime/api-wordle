@@ -5,6 +5,8 @@ use std::{env, path::PathBuf};
 use api_framework::{parse_env, static_lazy_lock};
 use tracing::level_filters::LevelFilter;
 
+use crate::sha256::sha256_hex_to_bytes;
+
 /// Sets up environment variables from `.env` and `{crate_name}.env`.
 pub fn setup() {
     dotenvy::dotenv().ok();
@@ -61,10 +63,10 @@ static_lazy_lock! {
 
 static_lazy_lock! {
     /// The PASETO symmetric key hashed using SHA256.
-    pub PASETO_SYMMETRIC_KEY: [u8; 32] = parse_env!("PASETO_SYMMETRIC_KEY" => |k| Ok::<[u8; 32], _>(k.as_bytes().try_into().expect("PASETO_SYMMETRIC_KEY must be 32 bytes long"))).expect("PASETO_SYMMETRIC_KEY not set in environment");
+    pub PASETO_SYMMETRIC_KEY: [u8; 32] = parse_env!("PASETO_SYMMETRIC_KEY" => |k| Ok(sha256_hex_to_bytes(&k).expect("PASETO_SYMMETRIC_KEY must be a valid 32-byte long SHA256 token"))).expect("PASETO_SYMMETRIC_KEY not set in environment");
 }
 
 static_lazy_lock! {
     /// The session symmetric key hashed using SHA256.
-    pub SESSION_SYMMETRIC_KEY: [u8; 32] = parse_env!("SESSION_SYMMETRIC_KEY" => |k| Ok::<[u8; 32], _>(k.as_bytes().try_into().expect("SESSION_SYMMETRIC_KEY must be 32 bytes long"))).expect("SESSION_SYMMETRIC_KEY not set in environment");
+    pub SESSION_SYMMETRIC_KEY: [u8; 32] = parse_env!("SESSION_SYMMETRIC_KEY" => |k| Ok(sha256_hex_to_bytes(&k).expect("SESSION_SYMMETRIC_KEY must be a valid 32-byte long SHA256 token"))).expect("SESSION_SYMMETRIC_KEY not set in environment");
 }
