@@ -19,8 +19,12 @@ pub mod validate;
 pub fn route_from(mut app: Router) -> Router {
     app = route_gets(app);
     app = route_posts(app);
-    app.layer(TraceLayer::new_for_http())
-        .layer(middleware::cors::layers::CORS.to_owned())
+    app.layer(TraceLayer::new_for_http().on_request(
+        |request: &axum::http::Request<_>, _span: &tracing::Span| {
+            tracing::trace!(headers = ?request.headers(), "Incoming request headers");
+        },
+    ))
+    .layer(middleware::cors::layers::CORS.to_owned())
 }
 
 fn route_gets(app: Router) -> Router {

@@ -16,8 +16,8 @@ pub mod layers {
         .allow_origin(AllowOrigin::async_predicate(|origin: HeaderValue, request_parts: &request::Parts| {
             let headers = request_parts.headers.clone();
             async move {
-                tracing::debug!("CORS async_predicate called with origin: {:?}", origin);
-                tracing::debug!("Request headers: {:?}", headers);
+                tracing::trace!("CORS async_predicate called with origin: {:?}", origin);
+                tracing::trace!("Request headers: {:?}", headers);
                 let config = CorsConfig::read().unwrap_or_default();
                 tracing::trace!("CORS origin check: {:?}", origin);
                 config.contains(&origin)
