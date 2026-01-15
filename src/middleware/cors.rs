@@ -15,7 +15,7 @@ pub mod layers {
         pub CORS: CorsLayer = CorsLayer::new()
         .allow_origin(AllowOrigin::async_predicate(|origin: HeaderValue, _request_parts: &request::Parts| async move {
             let config = CorsConfig::read().unwrap_or_default();
-
+            tracing::trace!("CORS origin check: {:?}", origin);
             config.contains(&origin)
         }))
         .allow_credentials(true)
