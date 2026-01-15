@@ -108,3 +108,7 @@ codegen-units = 1
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "api-wordle"
+path = "src/main.rs"
