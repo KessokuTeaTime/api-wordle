@@ -4,11 +4,10 @@ use entity::puzzles::Model as Puzzle;
 use entity::{PuzzleDate, PuzzleSolution, prelude::*, puzzles};
 use migration::OnConflict;
 use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait as _, QuerySelect as _};
-use tracing::{error, info, trace, warn};
 
 /// Gets all puzzle dates.
 pub async fn get_dates(db: &DatabaseConnection) -> Vec<PuzzleDate> {
-    info!("getting dates…");
+    tracing::info!("getting dates…");
 
     let dates = Puzzles::find()
         .select_only()
@@ -18,22 +17,22 @@ pub async fn get_dates(db: &DatabaseConnection) -> Vec<PuzzleDate> {
         .await
         .unwrap_or(Vec::new());
 
-    trace!("got dates: {dates:?}");
+    tracing::trace!("got dates: {dates:?}");
     dates
 }
 
 /// Gets all puzzles.
 pub async fn get_puzzles(db: &DatabaseConnection) -> Vec<Puzzle> {
-    info!("getting puzzles…");
+    tracing::info!("getting puzzles…");
     let p = Puzzles::find().all(db).await.unwrap_or(Vec::new());
 
-    trace!("got active puzzles: {p:?}");
+    tracing::trace!("got active puzzles: {p:?}");
     p
 }
 
 /// Gets a puzzle by date.
 pub async fn get_puzzle(db: &DatabaseConnection, date: &PuzzleDate) -> Option<Puzzle> {
-    info!("getting puzzle for {date}…");
+    tracing::info!("getting puzzle for {date}…");
     let puzzle = Puzzles::find_by_id(date.clone())
         .one(db)
         .await
@@ -41,8 +40,8 @@ pub async fn get_puzzle(db: &DatabaseConnection, date: &PuzzleDate) -> Option<Pu
         .flatten();
 
     match &puzzle {
-        Some(puzzle) => info!("got puzzle for {date}: {puzzle}"),
-        None => warn!("no puzzles found for {date}!"),
+        Some(puzzle) => tracing::info!("got puzzle for {date}: {puzzle}"),
+        None => tracing::warn!("no puzzles found for {date}!"),
     }
     puzzle
 }
@@ -57,7 +56,7 @@ pub async fn insert_solution(
     date: &PuzzleDate,
     solution: &PuzzleSolution,
 ) -> Result<(), DbErr> {
-    info!("inserting puzzle for {date}…");
+    tracing::info!("inserting puzzle for {date}…");
 
     let active_puzzle = puzzles::ActiveModel {
         date: ActiveValue::Set(date.clone()),
@@ -74,11 +73,11 @@ pub async fn insert_solution(
         .await
     {
         Ok(_) => {
-            info!("inserted solution {solution} for {date}");
+            tracing::info!("inserted solution {solution} for {date}");
             Ok(())
         }
         Err(err) => {
-            error!("failed to insert solution {solution} for {date}: {err}");
+            tracing::error!("failed to insert solution {solution} for {date}: {err}");
             Err(err)
         }
     }

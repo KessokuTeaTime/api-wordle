@@ -4,7 +4,6 @@ use crate::WORDS;
 
 use axum::{extract::Query, http::StatusCode, response::IntoResponse};
 use serde::Deserialize;
-use tracing::info;
 
 /// The parameters for the get request.
 #[derive(Debug, Clone, Deserialize)]
@@ -15,13 +14,13 @@ pub struct GetParams {
 
 /// The client validates a word.
 pub async fn get(Query(params): Query<GetParams>) -> impl IntoResponse {
-    info!("validating word {}…", params.word);
+    tracing::info!("validating word {}…", params.word);
 
     if WORDS.contains(&&params.word[..]) {
-        info!("validated word {}", params.word);
+        tracing::info!("validated word {}", params.word);
         StatusCode::OK
     } else {
-        info!("failed to validate word {}", params.word);
+        tracing::info!("failed to validate word {}", params.word);
         StatusCode::NOT_FOUND
     }
 }

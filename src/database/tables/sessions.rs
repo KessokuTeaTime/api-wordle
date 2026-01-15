@@ -4,7 +4,6 @@ use chrono::Utc;
 use entity::{prelude::*, sessions};
 use migration::OnConflict;
 use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait as _};
-use tracing::{error, info};
 
 /// Inserts or updates a session in the database.
 ///
@@ -12,7 +11,7 @@ use tracing::{error, info};
 ///
 /// Returns [`DbErr`] if the insertion fails.
 pub async fn insert_or_update_session(db: &DatabaseConnection, session: &str) -> Result<(), DbErr> {
-    info!("inserting or updating session {session}…");
+    tracing::info!("inserting or updating session {session}…");
     let now = Utc::now().naive_utc();
     let active_session = sessions::ActiveModel {
         session: ActiveValue::Set(session.to_owned()),
@@ -30,11 +29,11 @@ pub async fn insert_or_update_session(db: &DatabaseConnection, session: &str) ->
         .await
     {
         Ok(_) => {
-            info!("inserted or updated session {session} at {now}");
+            tracing::info!("inserted or updated session {session} at {now}");
             Ok(())
         }
         Err(err) => {
-            error!("failed to insert or update session {session}: {err}");
+            tracing::error!("failed to insert or update session {session}: {err}");
             Err(err)
         }
     }
@@ -48,11 +47,11 @@ pub async fn insert_or_update_session(db: &DatabaseConnection, session: &str) ->
 pub async fn delete_session(db: &DatabaseConnection, session: &str) -> Result<(), DbErr> {
     match Sessions::delete_by_id(session.to_owned()).exec(db).await {
         Ok(_) => {
-            info!("deleted session {session}");
+            tracing::info!("deleted session {session}");
             Ok(())
         }
         Err(err) => {
-            error!("failed to delete session {session}: {err}");
+            tracing::error!("failed to delete session {session}: {err}");
             Err(err)
         }
     }

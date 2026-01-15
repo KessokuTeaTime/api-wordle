@@ -18,7 +18,6 @@ use rusty_paseto::{
     core::{Key, Local, PasetoSymmetricKey, V4},
     prelude::{ExpirationClaim, PasetoBuilder, PasetoParser},
 };
-use tracing::info;
 
 /// Router layers for authorization.
 pub mod layers {
@@ -43,7 +42,7 @@ pub mod layers {
 ///
 /// See: [`PASETO_SYMMETRIC_KEY`]
 pub async fn generate_paseto_token() -> String {
-    info!("generating PASETO token…");
+    tracing::info!("generating PASETO token…");
     let timeout = (chrono::Local::now() + chrono::Duration::minutes(5)).to_rfc3339();
     let key: PasetoSymmetricKey<_, _> = Key::from(*PASETO_SYMMETRIC_KEY).into();
 
@@ -62,17 +61,17 @@ pub async fn authorize_paseto_token(
     request: Request,
     next: Next,
 ) -> Response {
-    info!("authorizing PASETO token for {addr}…");
+    tracing::info!("authorizing PASETO token for {addr}…");
 
     let token = bearer.token().to_owned();
     let key: PasetoSymmetricKey<_, _> = Key::from(*PASETO_SYMMETRIC_KEY).into();
     let _json_value = match PasetoParser::<V4, Local>::new().parse(&token, &key) {
         Ok(json_value) => {
-            info!("authorized {addr}!");
+            tracing::info!("authorized {addr}!");
             json_value
         }
         Err(_) => {
-            info!("failed to authorize {addr}");
+            tracing::info!("failed to authorize {addr}");
             return (StatusCode::UNAUTHORIZED, "token unmatch").into_response();
         }
     };

@@ -8,7 +8,6 @@ use entity::{
 };
 use migration::OnConflict;
 use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait as _, QuerySelect as _};
-use tracing::{error, info, warn};
 
 /// Gets a history by date and session.
 pub async fn get_history(
@@ -16,7 +15,7 @@ pub async fn get_history(
     date: &PuzzleDate,
     session: &str,
 ) -> Option<History> {
-    info!("getting history for {date} with session {session}…");
+    tracing::info!("getting history for {date} with session {session}…");
     let history = Histories::find_by_id((date.to_owned(), session.to_owned()))
         .one(db)
         .await
@@ -24,8 +23,8 @@ pub async fn get_history(
         .flatten();
 
     match &history {
-        Some(history) => info!("got puzzle for {date} with session {session}: {history}"),
-        None => warn!("no puzzles found for {date} with session {session}!"),
+        Some(history) => tracing::info!("got puzzle for {date} with session {session}: {history}"),
+        None => tracing::warn!("no puzzles found for {date} with session {session}!"),
     }
     history
 }
@@ -41,7 +40,7 @@ pub async fn create_history(
     session: &str,
     solution: &PuzzleSolution,
 ) -> Result<(), DbErr> {
-    info!("creating history for {date} with session {session}…");
+    tracing::info!("creating history for {date} with session {session}…");
     let active_history = histories::ActiveModel {
         date: ActiveValue::Set(date.to_owned()),
         session: ActiveValue::Set(session.to_owned()),
@@ -52,11 +51,13 @@ pub async fn create_history(
 
     match Histories::insert(active_history).exec(db).await {
         Ok(_) => {
-            info!("created history for {date} with session {session} and solution {solution}");
+            tracing::info!(
+                "created history for {date} with session {session} and solution {solution}"
+            );
             Ok(())
         }
         Err(err) => {
-            error!(
+            tracing::error!(
                 "failed to create history for {date} with session {session} and solution {solution}"
             );
             Err(err)
@@ -84,7 +85,7 @@ pub async fn submit_to_history(
     session: &str,
     answer: &PuzzleSolution,
 ) -> Result<SubmitResult, DbErr> {
-    info!("submitting {answer} to history at {date} with {session}…");
+    tracing::info!("submitting {answer} to history at {date} with {session}…");
 
     let (mut submit_history, solution) =
         match Histories::find_by_id((date.to_owned(), session.to_owned()))
@@ -101,7 +102,7 @@ pub async fn submit_to_history(
             .flatten()
         {
             Some((submit_history, true, _)) => {
-                warn!("history is completed for {date} with session {session}!");
+                tracing::warn!("history is completed for {date} with session {session}!");
                 return Ok(SubmitResult {
                     submit_history: submit_history.unwrap_or_default(),
                     is_completed: true,
@@ -111,7 +112,7 @@ pub async fn submit_to_history(
                 (submit_history.unwrap_or_default(), solution)
             }
             None => {
-                error!("no history found for {date} with session {session}!");
+                tracing::error!("no history found for {date} with session {session}!");
                 return Err(DbErr::Custom(format!("session {session} has no history")));
             }
         };
@@ -143,14 +144,16 @@ pub async fn submit_to_history(
         .await
     {
         Ok(_) => {
-            info!("submitted {answer} to history at {date} with session {session}");
+            tracing::info!("submitted {answer} to history at {date} with session {session}");
             Ok(SubmitResult {
                 submit_history,
                 is_completed: word.all_matches(),
             })
         }
         Err(err) => {
-            error!("failed to submit {answer} to history at {date} with session {session}: {err}");
+            tracing::error!(
+                "failed to submit {answer} to history at {date} with session {session}: {err}"
+            );
             Err(err)
         }
     }
